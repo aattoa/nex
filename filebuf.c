@@ -34,64 +34,80 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
     return filebuf_ok;
 }
 
-static void destroy_buffer(void *ptr) {
-    buffer_free((struct buffer*)ptr);
-}
-
 struct filebuf filebuf_new(void) {
-    return (struct filebuf) { .lines = vector_new(sizeof(struct buffer), destroy_buffer) };
+    return (struct filebuf) {
+        .path = buffer_new(),
+        .lines = vector_new(sizeof(struct buffer), buffer_destroy),
+    };
 }
 
 void filebuf_free(struct filebuf *filebuf) {
+    buffer_free(&filebuf->path);
     vector_free(&filebuf->lines);
-    *filebuf = filebuf_new();
 }
 
-enum filebuf_status filebuf_read_stream(struct filebuf *filebuf, FILE *stream) {
+void filebuf_destroy(void *filebuf) {
+    filebuf_free((struct filebuf*)filebuf);
+}
+
+enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path) {
     *filebuf = filebuf_new();
+    enum filebuf_status status = lines_read(&filebuf->lines, path);
+    if (status != filebuf_ok) {
+        return status;
+    }
+    if (!buffer_copy(&filebuf->path, view_from(path))) {
+        vector_free(&filebuf->lines);
+        return filebuf_bad_alloc;
+    }
+    return filebuf_ok;
+}
+
+enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream) {
     bool eof = false;
     while (!eof) {
-        struct buffer line;
+        struct buffer line = buffer_new();
         enum filebuf_status status = filebuf_read_line(&eof, &line, stream);
         if (status != filebuf_ok) {
             return status;
         }
-        if (!vector_push(&filebuf->lines, &line)) {
+        if (!vector_push(lines, &line)) {
+            buffer_free(&line);
             return filebuf_bad_alloc;
         }
     }
     return filebuf_ok;
 }
 
-enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path) {
+enum filebuf_status lines_read(struct vector *lines, const char *path) {
     FILE *stream = fopen(path, "r");
     if (stream == NULL) {
         return filebuf_bad_open_read;
     }
-    enum filebuf_status status = filebuf_read_stream(filebuf, stream);
+    enum filebuf_status status = lines_read_stream(lines, stream);
     fclose(stream);
     return status;
 }
 
-enum filebuf_status filebuf_write_stream(struct filebuf filebuf, FILE *stream) {
-    for (size_t i = 0; i != filebuf.lines.len; ++i) {
-        struct buffer *line = vector_at(&filebuf.lines, i);
+enum filebuf_status lines_write_stream(struct vector lines, FILE *stream) {
+    for (size_t i = 0; i != lines.len; ++i) {
+        struct buffer *line = vector_at(&lines, i);
         if (fwrite(line->ptr, 1, line->len, stream) != line->len) {
             return filebuf_bad_write;
         }
-        if (i + 1 != filebuf.lines.len && fputc('\n', stream) == EOF) {
+        if (i + 1 != lines.len && fputc('\n', stream) == EOF) {
             return filebuf_bad_write;
         }
     }
     return filebuf_ok;
 }
 
-enum filebuf_status filebuf_write(struct filebuf filebuf, const char *path) {
+enum filebuf_status lines_write(struct vector lines, const char *path) {
     FILE *stream = fopen(path, "w");
     if (stream == NULL) {
         return filebuf_bad_open_write;
     }
-    enum filebuf_status status = filebuf_write_stream(filebuf, stream);
+    enum filebuf_status status = lines_write_stream(lines, stream);
     fclose(stream);
     return status;
 }

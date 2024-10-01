@@ -6,7 +6,8 @@
 #include <stdio.h>
 
 struct filebuf {
-    struct vector lines; // element: `struct buffer`
+    struct vector lines; // Element: `struct buffer`
+    struct buffer path; // Empty if no path
 };
 
 enum filebuf_status {
@@ -22,13 +23,17 @@ struct filebuf filebuf_new(void);
 
 void filebuf_free(struct filebuf *filebuf);
 
-enum filebuf_status filebuf_read_stream(struct filebuf *filebuf, FILE *stream);
+void filebuf_destroy(void *filebuf);
 
 enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path);
 
-enum filebuf_status filebuf_write_stream(struct filebuf filebuf, FILE *stream);
+enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream);
 
-enum filebuf_status filebuf_write(struct filebuf filebuf, const char *path);
+enum filebuf_status lines_read(struct vector *lines, const char *path);
+
+enum filebuf_status lines_write_stream(struct vector lines, FILE *stream);
+
+enum filebuf_status lines_write(struct vector lines, const char *path);
 
 const char *filebuf_status_describe(enum filebuf_status status);
 

@@ -1,35 +1,6 @@
 #include "filebuf.h"
 #include "util.h"
-#include <assert.h>
 #include <stdlib.h>
-
-static enum filebuf_status filebuf_allocate(struct filebuf *filebuf, size_t line_capacity) {
-    void *ptr = malloc(line_capacity * sizeof(struct buffer));
-    if (ptr == NULL) {
-        return filebuf_bad_alloc;
-    }
-    filebuf->lines = ptr;
-    filebuf->line_count = 0;
-    filebuf->line_capacity = line_capacity;
-    return filebuf_ok;
-}
-
-static enum filebuf_status filebuf_grow_lines(struct filebuf *filebuf) {
-    if (filebuf->lines == NULL) {
-        return filebuf_allocate(filebuf, 64);
-    }
-    size_t new_capacity = min_uz(filebuf->line_capacity * 2, filebuf->line_capacity + 1028);
-    if (new_capacity < filebuf->line_capacity) {
-        return filebuf_bad_alloc; // size_t overflow
-    }
-    void *ptr = realloc(filebuf->lines, new_capacity * sizeof(struct buffer));
-    if (ptr == NULL) {
-        return filebuf_bad_alloc;
-    }
-    filebuf->lines = ptr;
-    filebuf->line_capacity = new_capacity;
-    return filebuf_ok;
-}
 
 static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FILE *stream) {
     long position = ftell(stream);
@@ -63,15 +34,16 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
     return filebuf_ok;
 }
 
+static void destroy_buffer(void *ptr) {
+    buffer_free((struct buffer*)ptr);
+}
+
 struct filebuf filebuf_new(void) {
-    return (struct filebuf) { .lines = NULL, .line_count = 0, .line_capacity = 0 };
+    return (struct filebuf) { .lines = vector_new(sizeof(struct buffer), destroy_buffer) };
 }
 
 void filebuf_free(struct filebuf *filebuf) {
-    for (size_t i = 0; i != filebuf->line_count; ++i) {
-        buffer_free(&filebuf->lines[i]);
-    }
-    free(filebuf->lines);
+    vector_free(&filebuf->lines);
     *filebuf = filebuf_new();
 }
 
@@ -79,20 +51,14 @@ enum filebuf_status filebuf_read_stream(struct filebuf *filebuf, FILE *stream) {
     *filebuf = filebuf_new();
     bool eof = false;
     while (!eof) {
-        if (filebuf->line_count == filebuf->line_capacity) {
-            enum filebuf_status status = filebuf_grow_lines(filebuf);
-            if (status != filebuf_ok) {
-                return status;
-            }
-        }
-        assert(filebuf->line_count < filebuf->line_capacity);
-
         struct buffer line;
         enum filebuf_status status = filebuf_read_line(&eof, &line, stream);
         if (status != filebuf_ok) {
             return status;
         }
-        filebuf->lines[filebuf->line_count++] = line;
+        if (!vector_push(&filebuf->lines, &line)) {
+            return filebuf_bad_alloc;
+        }
     }
     return filebuf_ok;
 }
@@ -108,12 +74,12 @@ enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path) {
 }
 
 enum filebuf_status filebuf_write_stream(struct filebuf filebuf, FILE *stream) {
-    for (size_t i = 0; i != filebuf.line_count; ++i) {
-        struct buffer line = filebuf.lines[i];
-        if (fwrite(line.ptr, 1, line.len, stream) != line.len) {
+    for (size_t i = 0; i != filebuf.lines.len; ++i) {
+        struct buffer *line = vector_at(&filebuf.lines, i);
+        if (fwrite(line->ptr, 1, line->len, stream) != line->len) {
             return filebuf_bad_write;
         }
-        if (i + 1 != filebuf.line_count && fputc('\n', stream) == EOF) {
+        if (i + 1 != filebuf.lines.len && fputc('\n', stream) == EOF) {
             return filebuf_bad_write;
         }
     }

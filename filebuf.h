@@ -2,12 +2,11 @@
 #define NEX_FILEBUF_H
 
 #include "buffer.h"
+#include "vector.h"
 #include <stdio.h>
 
 struct filebuf {
-    struct buffer *lines;
-    size_t line_count;
-    size_t line_capacity;
+    struct vector lines; // element: `struct buffer`
 };
 
 enum filebuf_status {

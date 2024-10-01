@@ -1,19 +1,38 @@
-#include "filebuf.h"
+#include "util.h"
+#include <stdbool.h>
 #include <stdio.h>
 
-int main(void) {
-    struct filebuf file;
-    enum filebuf_status status = filebuf_read(&file, "test.txt");
-    if (status == filebuf_ok) {
-        printf("line count: %zu, capacity: %zu\n", file.line_count, file.line_capacity);
-        for (size_t i = 0; i != file.line_count; ++i) {
-            printf("line %zu: '", i + 1);
-            fwrite(file.lines[i].ptr, 1, file.lines[i].len, stdout);
-            printf("'\n");
+static void show_usage(void) {
+    puts("Usage: nex [options] [file ...]\n"
+        "\nOptions:"
+        "\n\t-h, --help    \tDisplay help information"
+        "\n\t-v, --version \tDisplay version information"
+        "\n\t--            \tTreat remaining arguments as filenames");
+}
+
+static void process_arguments(const char **begin, const char **end) {
+    bool handle_flags = true;
+    for (const char **arg = begin; arg != end; ++arg) {
+        if (handle_flags && **arg == '-') {
+            if (streq(*arg, "--")) {
+                handle_flags = false;
+            }
+            else if (streq(*arg, "-h") || streq(*arg, "--help")) {
+                show_usage();
+            }
+            else if (streq(*arg, "-v") || streq(*arg, "--version")) {
+                puts("nex 0.0.1");
+            }
+            else {
+                fprintf(stderr, "Unrecognized option '%s'\n", *arg);
+            }
         }
-        filebuf_free(&file);
+        else {
+            printf("treating '%s' as a filename\n", *arg);
+        }
     }
-    else {
-        fprintf(stderr, "filebuf_read failed: %s\n", filebuf_status_describe(status));
-    }
+}
+
+int main(int argc, const char **argv) {
+    process_arguments(argv + 1, argv + argc);
 }

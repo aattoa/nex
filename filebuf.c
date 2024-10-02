@@ -36,14 +36,15 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
 
 struct filebuf filebuf_new(void) {
     return (struct filebuf) {
-        .path = buffer_new(),
+        .path = NULL,
         .lines = vector_new(sizeof(struct buffer), buffer_destroy),
     };
 }
 
 void filebuf_free(struct filebuf *filebuf) {
-    buffer_free(&filebuf->path);
     vector_free(&filebuf->lines);
+    free(filebuf->path);
+    filebuf->path = NULL;
 }
 
 void filebuf_destroy(void *filebuf) {
@@ -56,7 +57,8 @@ enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path) {
     if (status != filebuf_ok) {
         return status;
     }
-    if (!buffer_copy(&filebuf->path, view_from(path))) {
+    filebuf->path = nex_strdup(path);
+    if (filebuf->path == NULL) {
         vector_free(&filebuf->lines);
         return filebuf_bad_alloc;
     }
@@ -115,6 +117,7 @@ enum filebuf_status lines_write(struct vector lines, const char *path) {
 const char *filebuf_status_describe(enum filebuf_status status) {
     switch (status) {
     case filebuf_ok:             return "ok";
+    case filebuf_no_path:        return "no path";
     case filebuf_bad_alloc:      return "bad alloc";
     case filebuf_bad_read:       return "bad read";
     case filebuf_bad_write:      return "bad write";

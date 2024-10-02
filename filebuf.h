@@ -7,11 +7,12 @@
 
 struct filebuf {
     struct vector lines; // Element: `struct buffer`
-    struct buffer path; // Empty if no path
+    char *path; // Potentially null, owning null terminated string
 };
 
 enum filebuf_status {
     filebuf_ok,
+    filebuf_no_path,
     filebuf_bad_alloc,
     filebuf_bad_read,
     filebuf_bad_write,

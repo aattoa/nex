@@ -1,3 +1,4 @@
+#include "editor.h"
 #include "util.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -10,7 +11,7 @@ static void show_usage(void) {
         "\n\t--            \tTreat remaining arguments as filenames");
 }
 
-static void process_arguments(const char **begin, const char **end) {
+static void process_arguments(struct editor *editor, const char **begin, const char **end) {
     bool handle_flags = true;
     for (const char **arg = begin; arg != end; ++arg) {
         if (handle_flags && **arg == '-') {
@@ -28,11 +29,17 @@ static void process_arguments(const char **begin, const char **end) {
             }
         }
         else {
-            printf("treating '%s' as a filename\n", *arg);
+            enum filebuf_status status = editor_add_filebuf(editor, *arg);
+            if (status != filebuf_ok) {
+                fprintf(stderr, "Could not edit '%s': %s\n", *arg, filebuf_status_describe(status));
+            }
         }
     }
 }
 
 int main(int argc, const char **argv) {
-    process_arguments(argv + 1, argv + argc);
+    struct editor editor = editor_new();
+    process_arguments(&editor, argv + 1, argv + argc);
+    printf("Editing %zu files\n", editor.filebufs.len);
+    editor_free(&editor);
 }

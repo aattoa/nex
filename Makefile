@@ -1,7 +1,7 @@
-CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Werror -Os
+CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Werror -g -Os
 CC     = cc
 
-SOURCES = main.c view.c buffer.c vector.c filebuf.c util.c
+SOURCES = main.c editor.c filebuf.c vector.c buffer.c view.c util.c
 OBJECTS = ${SOURCES:.c=.o}
 BINARY  = nex
 

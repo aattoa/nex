@@ -1,10 +1,13 @@
-#include "editor.h"
 #include "util.h"
+#include "editor.h"
+#include "terminal.h"
+
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static void show_usage(void) {
-    puts("Usage: nex [options] [file ...]\n"
+    puts("Usage: nex [options] [file ...]"
         "\nOptions:"
         "\n\t-h, --help    \tDisplay help information"
         "\n\t-v, --version \tDisplay version information"
@@ -37,9 +40,40 @@ static void process_arguments(struct editor *editor, const char **begin, const c
     }
 }
 
+void terminal_start(void) {
+    terminal_enter_raw_mode();
+    terminal_print("%s", TERMINAL_ENTER_ALTERNATE_SCREEN TERMINAL_HIDE_CURSOR);
+}
+
+void terminal_stop(void) {
+    terminal_restore_previous_mode();
+    terminal_print("%s", TERMINAL_LEAVE_ALTERNATE_SCREEN TERMINAL_SHOW_CURSOR);
+}
+
 int main(int argc, const char **argv) {
     struct editor editor = editor_new();
     process_arguments(&editor, argv + 1, argv + argc);
-    printf("Editing %zu files\n", editor.filebufs.len);
+
+    // Enable full output buffering.
+    setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
+
+    terminal_start();
+    atexit(terminal_stop);
+    fflush(stdout);
+
+    bool quit = false;
+    while (!quit) {
+        int character = fgetc(stdin);
+        switch (character) {
+        break; case 'q': quit = true;
+        break; case 'f': fflush(stdout);
+        break; case 'c': terminal_print("%s", TERMINAL_CLEAR);
+        break; case 'h': fputs(TERMINAL_HIDE_CURSOR, stdout);
+        break; case 'H': fputs(TERMINAL_SHOW_CURSOR, stdout);
+        break; case 'r': terminal_set_cursor((struct termpos) { 0, 0 });
+        }
+        printf("got '%d'\n", character);
+    }
+
     editor_free(&editor);
 }

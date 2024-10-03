@@ -5,13 +5,24 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-void die(const char *fmt, ...);
+#ifdef __GNUC__
+#define NEX_GNU_ATTRIBUTE(...) __attribute__((__VA_ARGS__))
+#else
+#define NEX_GNU_ATTRIBUTE(...)
+#endif
 
-char *nex_strdup(const char *str);
+NEX_GNU_ATTRIBUTE(noreturn, format(printf, 1, 2))
+void die(const char *restrict fmt, ...);
 
+NEX_GNU_ATTRIBUTE(const)
+size_t max_uz(size_t a, size_t b);
+
+NEX_GNU_ATTRIBUTE(const)
+size_t min_uz(size_t a, size_t b);
+
+NEX_GNU_ATTRIBUTE(pure)
 bool streq(const char *a, const char *b);
 
-size_t max_uz(size_t a, size_t b);
-size_t min_uz(size_t a, size_t b);
+char *nex_strdup(const char *str);
 
 #endif // NEX_UTIL_H

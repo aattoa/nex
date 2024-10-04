@@ -113,6 +113,9 @@ bool strbuf_erase(struct strbuf *strbuf, size_t index) {
     if (index >= strbuf->len) {
         return false;
     }
+    if (index == strbuf->len - 1) {
+        return strbuf_pop(strbuf);
+    }
     memmove(
         strbuf->ptr + index,
         strbuf->ptr + index + 1,

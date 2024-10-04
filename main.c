@@ -43,12 +43,12 @@ static void process_arguments(struct editor *editor, const char **begin, const c
 
 void terminal_start(void) {
     terminal_enter_raw_mode();
-    terminal_print("%s", TERMINAL_ENTER_ALTERNATE_SCREEN TERMINAL_HIDE_CURSOR);
+    terminal_print("%s%s", TERMINAL_ENTER_ALTERNATE_SCREEN, TERMINAL_CLEAR);
 }
 
 void terminal_stop(void) {
     terminal_restore_previous_mode();
-    terminal_print("%s", TERMINAL_LEAVE_ALTERNATE_SCREEN TERMINAL_SHOW_CURSOR);
+    terminal_print("%s", TERMINAL_LEAVE_ALTERNATE_SCREEN);
 }
 
 int main(int argc, const char **argv) {
@@ -60,20 +60,18 @@ int main(int argc, const char **argv) {
 
     terminal_start();
     atexit(terminal_stop);
-    fflush(stdout);
-
-    terminal_print("%s", TERMINAL_CLEAR);
-    fflush(stdout);
 
     bool quit = false;
     while (!quit) {
+        fflush(stdout);
         int key = terminal_read_input();
         if (key == NEX_KEY_CONTROL('c')) {
             quit = true;
         }
-        terminal_set_cursor((struct termpos) { 0, 0 });
-        terminal_print("%sgot %d\n", TERMINAL_CLEAR_LINE, key);
-        fflush(stdout);
+        editor_cmdline_handle_key(&editor, key);
+        terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
+        terminal_print("%s:%s", TERMINAL_CLEAR_LINE, stror(editor.cmdline.ptr, ""));
+        terminal_set_cursor((struct termpos) { .x = editor.cmdline_cursor + 2, .y = 0 });
     }
 
     editor_free(&editor);

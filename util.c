@@ -23,3 +23,7 @@ size_t min_uz(size_t a, size_t b) {
 bool streq(const char *a, const char *b) {
     return strcmp(a, b) == 0;
 }
+
+const char *stror(const char *a, const char *b) {
+    return a ? a : b ? b : "(null)";
+}

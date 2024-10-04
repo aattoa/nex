@@ -20,7 +20,10 @@ size_t max_uz(size_t a, size_t b);
 NEX_GNU_ATTRIBUTE(const)
 size_t min_uz(size_t a, size_t b);
 
-NEX_GNU_ATTRIBUTE(pure)
+NEX_GNU_ATTRIBUTE(pure, nonnull)
 bool streq(const char *a, const char *b);
+
+NEX_GNU_ATTRIBUTE(const)
+const char *stror(const char *a, const char *b);
 
 #endif // NEX_UTIL_H

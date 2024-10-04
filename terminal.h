@@ -13,6 +13,8 @@ struct termsize {
     int16_t w, h;
 };
 
+int terminal_read_input(void);
+
 void terminal_enter_raw_mode(void);
 
 void terminal_restore_previous_mode(void);

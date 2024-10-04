@@ -1,6 +1,7 @@
 #include "util.h"
 #include "editor.h"
 #include "terminal.h"
+#include "keycodes.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -61,18 +62,18 @@ int main(int argc, const char **argv) {
     atexit(terminal_stop);
     fflush(stdout);
 
+    terminal_print("%s", TERMINAL_CLEAR);
+    fflush(stdout);
+
     bool quit = false;
     while (!quit) {
-        int character = fgetc(stdin);
-        switch (character) {
-        break; case 'q': quit = true;
-        break; case 'f': fflush(stdout);
-        break; case 'c': terminal_print("%s", TERMINAL_CLEAR);
-        break; case 'h': fputs(TERMINAL_HIDE_CURSOR, stdout);
-        break; case 'H': fputs(TERMINAL_SHOW_CURSOR, stdout);
-        break; case 'r': terminal_set_cursor((struct termpos) { 0, 0 });
+        int key = terminal_read_input();
+        if (key == NEX_KEY_CONTROL('c')) {
+            quit = true;
         }
-        printf("got '%d'\n", character);
+        terminal_set_cursor((struct termpos) { 0, 0 });
+        terminal_print("%sgot %d\n", TERMINAL_CLEAR_LINE, key);
+        fflush(stdout);
     }
 
     editor_free(&editor);

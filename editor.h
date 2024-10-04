@@ -2,7 +2,6 @@
 #define NEX_EDITOR_H
 
 #include "filebuf.h"
-#include "buffer.h"
 
 struct editor {
     struct vector filebufs; // Element: `struct filebuf`

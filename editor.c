@@ -18,8 +18,12 @@ struct filebuf *editor_current_filebuf(struct editor *editor) {
 
 enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path) {
     struct filebuf filebuf = filebuf_new();
-    enum filebuf_status status = filebuf_read(&filebuf, path);
+    if (!strbuf_append(&filebuf.path, view_from(path))) {
+        return filebuf_bad_alloc;
+    }
+    enum filebuf_status status = filebuf_read(&filebuf);
     if (status != filebuf_ok) {
+        filebuf_free(&filebuf);
         return status;
     }
     if (!vector_push(&editor->filebufs, &filebuf)) {
@@ -31,17 +35,17 @@ enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path) 
 
 enum filebuf_status editor_read_current_filebuf(struct editor *editor) {
     struct filebuf *filebuf = editor_current_filebuf(editor);
-    if (filebuf != NULL && filebuf->path != NULL) {
+    if (filebuf != NULL) {
         vector_clear(&filebuf->lines);
-        return lines_read(&filebuf->lines, filebuf->path);
+        return filebuf_read(filebuf);
     }
     return filebuf_no_path;
 }
 
 enum filebuf_status editor_write_current_filebuf(struct editor *editor) {
     struct filebuf *filebuf = editor_current_filebuf(editor);
-    if (filebuf != NULL && filebuf->path != NULL) {
-        return lines_write(filebuf->lines, filebuf->path);
+    if (filebuf != NULL) {
+        return filebuf_write(*filebuf);
     }
     return filebuf_no_path;
 }

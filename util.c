@@ -23,12 +23,3 @@ size_t min_uz(size_t a, size_t b) {
 bool streq(const char *a, const char *b) {
     return strcmp(a, b) == 0;
 }
-
-char *nex_strdup(const char *str) {
-    size_t len = strlen(str) + 1;
-    char *dup = malloc(len);
-    if (dup != NULL) {
-        memcpy(dup, str, len);
-    }
-    return dup;
-}

@@ -1,13 +1,13 @@
 #ifndef NEX_FILEBUF_H
 #define NEX_FILEBUF_H
 
-#include "buffer.h"
+#include "strbuf.h"
 #include "vector.h"
 #include <stdio.h>
 
 struct filebuf {
-    struct vector lines; // Element: `struct buffer`
-    char *path; // Potentially null, owning null terminated string
+    struct vector lines; // Element: `struct strbuf`
+    struct strbuf path;
 };
 
 enum filebuf_status {
@@ -20,13 +20,16 @@ enum filebuf_status {
     filebuf_bad_open_write,
 };
 
+NEX_GNU_ATTRIBUTE(const)
 struct filebuf filebuf_new(void);
 
 void filebuf_free(struct filebuf *filebuf);
 
 void filebuf_destroy(void *filebuf);
 
-enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path);
+enum filebuf_status filebuf_read(struct filebuf *filebuf);
+
+enum filebuf_status filebuf_write(struct filebuf filebuf);
 
 enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream);
 
@@ -36,6 +39,7 @@ enum filebuf_status lines_write_stream(struct vector lines, FILE *stream);
 
 enum filebuf_status lines_write(struct vector lines, const char *path);
 
+NEX_GNU_ATTRIBUTE(const)
 const char *filebuf_status_describe(enum filebuf_status status);
 
 #endif // NEX_FILEBUF_H

@@ -23,6 +23,4 @@ size_t min_uz(size_t a, size_t b);
 NEX_GNU_ATTRIBUTE(pure)
 bool streq(const char *a, const char *b);
 
-char *nex_strdup(const char *str);
-
 #endif // NEX_UTIL_H

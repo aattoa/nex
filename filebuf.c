@@ -2,7 +2,7 @@
 #include "util.h"
 #include <stdlib.h>
 
-static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FILE *stream) {
+static enum filebuf_status filebuf_read_line(bool *eof, struct strbuf *line, FILE *stream) {
     long position = ftell(stream);
     size_t length = 0;
     for (;;) {
@@ -11,9 +11,7 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
             *eof = (character == EOF);
             break;
         }
-        else {
-            ++length;
-        }
+        ++length;
     }
     if (ferror(stream) != 0) {
         return filebuf_bad_read;
@@ -21,11 +19,11 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
     if (fseek(stream, position, SEEK_SET) != 0) {
         return filebuf_bad_read;
     }
-    if (!buffer_allocate(line, length)) {
+    if (!strbuf_resize(line, length)) {
         return filebuf_bad_alloc;
     }
     if (fread(line->ptr, 1, length, stream) != length) {
-        buffer_free(line);
+        strbuf_free(line);
         return filebuf_bad_read;
     }
     if (!*eof) {
@@ -36,45 +34,38 @@ static enum filebuf_status filebuf_read_line(bool *eof, struct buffer *line, FIL
 
 struct filebuf filebuf_new(void) {
     return (struct filebuf) {
-        .path = NULL,
-        .lines = vector_new(sizeof(struct buffer), buffer_destroy),
+        .lines = vector_new(sizeof(struct strbuf), strbuf_destroy),
+        .path = strbuf_new(),
     };
 }
 
 void filebuf_free(struct filebuf *filebuf) {
     vector_free(&filebuf->lines);
-    free(filebuf->path);
-    filebuf->path = NULL;
+    strbuf_free(&filebuf->path);
 }
 
 void filebuf_destroy(void *filebuf) {
     filebuf_free((struct filebuf*)filebuf);
 }
 
-enum filebuf_status filebuf_read(struct filebuf *filebuf, const char *path) {
-    *filebuf = filebuf_new();
-    enum filebuf_status status = lines_read(&filebuf->lines, path);
-    if (status != filebuf_ok) {
-        return status;
-    }
-    filebuf->path = nex_strdup(path);
-    if (filebuf->path == NULL) {
-        vector_free(&filebuf->lines);
-        return filebuf_bad_alloc;
-    }
-    return filebuf_ok;
+enum filebuf_status filebuf_read(struct filebuf *filebuf) {
+    return filebuf->path.len == 0 ? filebuf_no_path : lines_read(&filebuf->lines, filebuf->path.ptr);
+}
+
+enum filebuf_status filebuf_write(struct filebuf filebuf) {
+    return filebuf.path.len == 0 ? filebuf_no_path : lines_write(filebuf.lines, filebuf.path.ptr);
 }
 
 enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream) {
     bool eof = false;
     while (!eof) {
-        struct buffer line = buffer_new();
+        struct strbuf line = strbuf_new();
         enum filebuf_status status = filebuf_read_line(&eof, &line, stream);
         if (status != filebuf_ok) {
             return status;
         }
         if (!vector_push(lines, &line)) {
-            buffer_free(&line);
+            strbuf_free(&line);
             return filebuf_bad_alloc;
         }
     }
@@ -93,7 +84,7 @@ enum filebuf_status lines_read(struct vector *lines, const char *path) {
 
 enum filebuf_status lines_write_stream(struct vector lines, FILE *stream) {
     for (size_t i = 0; i != lines.len; ++i) {
-        struct buffer *line = vector_at(&lines, i);
+        struct strbuf *line = vector_at(&lines, i);
         if (fwrite(line->ptr, 1, line->len, stream) != line->len) {
             return filebuf_bad_write;
         }

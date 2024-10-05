@@ -61,17 +61,16 @@ int main(int argc, const char **argv) {
     terminal_start();
     atexit(terminal_stop);
 
-    bool quit = false;
-    while (!quit) {
+    while (editor.state != editor_state_quit) {
         fflush(stdout);
         int key = terminal_read_input();
         if (key == NEX_KEY_CONTROL('c')) {
-            quit = true;
+            editor.state = editor_state_quit;
         }
         editor_cmdline_handle_key(&editor, key);
         terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
-        terminal_print("%s:%s", TERMINAL_CLEAR_LINE, stror(editor.cmdline.ptr, ""));
-        terminal_set_cursor((struct termpos) { .x = editor.cmdline_cursor + 2, .y = 0 });
+        terminal_print("%s:%s\nstatus: '%s'", TERMINAL_CLEAR, stror(editor.cmdline.ptr, ""), stror(editor.message.ptr, ""));
+        terminal_set_cursor((struct termpos) { .x = editor.cmdline_cursor + 2, .y = 1 });
     }
 
     editor_free(&editor);

@@ -1,8 +1,10 @@
 #include "editor.h"
+#include <stdarg.h>
 
 struct editor editor_new(void) {
     return (struct editor) {
         .filebufs = vector_new(sizeof(struct filebuf), filebuf_destroy),
+        .message = strbuf_new(),
         .cmdline = strbuf_new(),
         .cmdline_cursor = 0,
         .focus = 0,
@@ -11,6 +13,7 @@ struct editor editor_new(void) {
 }
 
 void editor_free(struct editor *editor) {
+    strbuf_free(&editor->message);
     strbuf_free(&editor->cmdline);
     vector_free(&editor->filebufs);
     *editor = editor_new();
@@ -52,4 +55,20 @@ enum filebuf_status editor_write_current_filebuf(struct editor *editor) {
         return filebuf_write(*filebuf);
     }
     return filebuf_no_path;
+}
+
+bool editor_set_message(struct editor *editor, struct view message) {
+    strbuf_clear(&editor->message);
+    return strbuf_append(&editor->message, message);
+}
+
+bool editor_print_message(struct editor *editor, const char *restrict fmt, ...) {
+    char message[256];
+
+    va_list args;
+    va_start(args, fmt);
+    int result = vsnprintf(message, sizeof(message), fmt, args);
+    va_end(args);
+
+    return result > 0 && editor_set_message(editor, view_from(message));
 }

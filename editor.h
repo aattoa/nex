@@ -1,14 +1,17 @@
 #ifndef NEX_EDITOR_H
 #define NEX_EDITOR_H
 
+#include "util.h"
 #include "filebuf.h"
 
 enum editor_state {
+    editor_state_quit,
     editor_state_cmdline,
 };
 
 struct editor {
     struct vector filebufs; // Element: `struct filebuf`
+    struct strbuf message;
     struct strbuf cmdline;
     size_t cmdline_cursor;
     size_t focus; // Zero means no focus
@@ -28,5 +31,10 @@ enum filebuf_status editor_read_current_filebuf(struct editor *editor) NEX_NONNU
 enum filebuf_status editor_write_current_filebuf(struct editor *editor) NEX_NONNULL;
 
 bool editor_cmdline_handle_key(struct editor *editor, int key) NEX_NONNULL;
+
+bool editor_set_message(struct editor *editor, struct view message);
+
+NEX_GNU_ATTRIBUTE(format(printf, 2, 3))
+bool editor_print_message(struct editor *editor, const char *restrict fmt, ...);
 
 #endif // NEX_EDITOR_H

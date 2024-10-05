@@ -13,7 +13,7 @@ struct termsize {
     int16_t w, h;
 };
 
-int terminal_read_input(void);
+int terminal_read_input(void) NEX_NODISCARD;
 
 void terminal_enter_raw_mode(void);
 

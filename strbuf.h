@@ -13,30 +13,28 @@ struct strbuf {
     size_t cap;
 };
 
-NEX_GNU_ATTRIBUTE(const)
-struct strbuf strbuf_new(void);
+struct strbuf strbuf_new(void) NEX_CONST;
 
-NEX_GNU_ATTRIBUTE(const)
-struct view strbuf_view(struct strbuf strbuf);
+struct view strbuf_view(struct strbuf strbuf) NEX_CONST;
 
-void strbuf_destroy(void *strbuf);
+void strbuf_destroy(void *strbuf) NEX_NONNULL;
 
-void strbuf_free(struct strbuf *strbuf);
+void strbuf_free(struct strbuf *strbuf) NEX_NONNULL;
 
-void strbuf_clear(struct strbuf *strbuf);
+void strbuf_clear(struct strbuf *strbuf) NEX_NONNULL;
 
-bool strbuf_resize(struct strbuf *strbuf, size_t size);
+bool strbuf_resize(struct strbuf *strbuf, size_t size) NEX_NONNULL;
 
-bool strbuf_reserve(struct strbuf *strbuf, size_t capacity);
+bool strbuf_reserve(struct strbuf *strbuf, size_t capacity) NEX_NONNULL;
 
-bool strbuf_append(struct strbuf *strbuf, struct view view);
+bool strbuf_append(struct strbuf *strbuf, struct view view) NEX_NONNULL;
 
-bool strbuf_push(struct strbuf *strbuf, char character);
+bool strbuf_push(struct strbuf *strbuf, char character) NEX_NONNULL;
 
-bool strbuf_pop(struct strbuf *strbuf);
+bool strbuf_pop(struct strbuf *strbuf) NEX_NONNULL;
 
-bool strbuf_insert(struct strbuf *strbuf, size_t index, char character);
+bool strbuf_insert(struct strbuf *strbuf, size_t index, char character) NEX_NONNULL;
 
-bool strbuf_erase(struct strbuf *strbuf, size_t index);
+bool strbuf_erase(struct strbuf *strbuf, size_t index) NEX_NONNULL;
 
 #endif // NEX_STRBUF_H

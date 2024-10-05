@@ -1,13 +1,16 @@
 #include "vector.h"
-#include "util.h"
 #include <stdlib.h>
 #include <string.h>
+
+static size_t vector_grow_capacity(size_t capacity) {
+    return capacity == 0 ? 8 : min_uz(capacity * 2, capacity + 1028);
+}
 
 static bool vector_grow_if_at_capacity(struct vector *vector) {
     if (vector->len != vector->cap) {
         return true;
     }
-    size_t new_cap = vector->cap == 0 ? 8 : min_uz(vector->cap * 2, vector->cap + 1028);
+    size_t new_cap = vector_grow_capacity(vector->cap);
     return new_cap > vector->cap && vector_reserve(vector, new_cap);
 }
 

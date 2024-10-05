@@ -20,26 +20,24 @@ enum filebuf_status {
     filebuf_bad_open_write,
 };
 
-NEX_GNU_ATTRIBUTE(const)
-struct filebuf filebuf_new(void);
+struct filebuf filebuf_new(void) NEX_CONST;
 
-void filebuf_free(struct filebuf *filebuf);
+void filebuf_free(struct filebuf *filebuf) NEX_NONNULL;
 
-void filebuf_destroy(void *filebuf);
+void filebuf_destroy(void *filebuf) NEX_NONNULL;
 
-enum filebuf_status filebuf_read(struct filebuf *filebuf);
+enum filebuf_status filebuf_read(struct filebuf *filebuf) NEX_NONNULL;
 
 enum filebuf_status filebuf_write(struct filebuf filebuf);
 
-enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream);
+enum filebuf_status lines_read_stream(struct vector *lines, FILE *stream) NEX_NONNULL;
 
-enum filebuf_status lines_read(struct vector *lines, const char *path);
+enum filebuf_status lines_read(struct vector *lines, const char *path) NEX_NONNULL;
 
-enum filebuf_status lines_write_stream(struct vector lines, FILE *stream);
+enum filebuf_status lines_write_stream(struct vector lines, FILE *stream) NEX_NONNULL;
 
-enum filebuf_status lines_write(struct vector lines, const char *path);
+enum filebuf_status lines_write(struct vector lines, const char *path) NEX_NONNULL;
 
-NEX_GNU_ATTRIBUTE(const)
-const char *filebuf_status_describe(enum filebuf_status status);
+const char *filebuf_status_describe(enum filebuf_status status) NEX_CONST;
 
 #endif // NEX_FILEBUF_H

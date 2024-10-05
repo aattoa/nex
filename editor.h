@@ -15,18 +15,18 @@ struct editor {
     enum editor_state state;
 };
 
-struct editor editor_new(void);
+struct editor editor_new(void) NEX_CONST;
 
-void editor_free(struct editor *editor);
+void editor_free(struct editor *editor) NEX_NONNULL;
 
-struct filebuf *editor_current_filebuf(struct editor *editor);
+struct filebuf *editor_current_filebuf(struct editor *editor) NEX_NONNULL NEX_NODISCARD;
 
-enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path);
+enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path) NEX_NONNULL;
 
-enum filebuf_status editor_read_current_filebuf(struct editor *editor);
+enum filebuf_status editor_read_current_filebuf(struct editor *editor) NEX_NONNULL;
 
-enum filebuf_status editor_write_current_filebuf(struct editor *editor);
+enum filebuf_status editor_write_current_filebuf(struct editor *editor) NEX_NONNULL;
 
-bool editor_cmdline_handle_key(struct editor *editor, int key);
+bool editor_cmdline_handle_key(struct editor *editor, int key) NEX_NONNULL;
 
 #endif // NEX_EDITOR_H

@@ -1,7 +1,6 @@
 #include "util.h"
 #include "editor.h"
 #include "terminal.h"
-#include "keycodes.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -41,14 +40,33 @@ static void process_arguments(struct editor *editor, const char **begin, const c
     }
 }
 
-void terminal_start(void) {
+static void terminal_start(void) {
     terminal_enter_raw_mode();
     terminal_print("%s%s", TERMINAL_ENTER_ALTERNATE_SCREEN, TERMINAL_CLEAR);
 }
 
-void terminal_stop(void) {
+static void terminal_stop(void) {
     terminal_restore_previous_mode();
     terminal_print("%s", TERMINAL_LEAVE_ALTERNATE_SCREEN);
+}
+
+static void handle_cmdline(struct editor *editor) {
+    terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
+    terminal_print("%s:%s\nstatus: %s", TERMINAL_CLEAR, stror(editor->cmdline.ptr, ""), stror(editor->message.ptr, "none"));
+    terminal_set_cursor((struct termpos) { .x = editor->cmdline_cursor + 2, .y = 1 });
+    fflush(stdout);
+    editor_handle_key_cmdline(editor, terminal_read_input());
+}
+
+static void handle_editline(struct editor *editor) {
+    if (editor->editline == NULL) {
+        die("null editline");
+    }
+    terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
+    terminal_print("Editing line %zu\n%s>%s", editor->line_index + 1, TERMINAL_CLEAR_LINE, stror(editor->editline->ptr, ""));
+    terminal_set_cursor((struct termpos) { .x = editor->editline_cursor + 2, .y = 2 });
+    fflush(stdout);
+    editor_handle_key_editline(editor, terminal_read_input());
 }
 
 int main(int argc, const char **argv) {
@@ -61,16 +79,16 @@ int main(int argc, const char **argv) {
     terminal_start();
     atexit(terminal_stop);
 
-    while (editor.state != editor_state_quit) {
-        fflush(stdout);
-        int key = terminal_read_input();
-        if (key == NEX_KEY_CONTROL('c')) {
-            editor.state = editor_state_quit;
+    while (editor.mode != editor_mode_quit) {
+        if (editor.mode == editor_mode_cmdline) {
+            handle_cmdline(&editor);
         }
-        editor_cmdline_handle_key(&editor, key);
-        terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
-        terminal_print("%s:%s\nstatus: '%s'", TERMINAL_CLEAR, stror(editor.cmdline.ptr, ""), stror(editor.message.ptr, ""));
-        terminal_set_cursor((struct termpos) { .x = editor.cmdline_cursor + 2, .y = 1 });
+        else if (editor.mode == editor_mode_editline) {
+            handle_editline(&editor);
+        }
+        else {
+            die("unhandled mode");
+        }
     }
 
     editor_free(&editor);

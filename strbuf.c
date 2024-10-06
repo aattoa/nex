@@ -119,7 +119,7 @@ bool strbuf_erase(struct strbuf *strbuf, size_t index) {
     memmove(
         strbuf->ptr + index,
         strbuf->ptr + index + 1,
-        strbuf->len - index + 1);
+        strbuf->len - index);
     --strbuf->len;
     return true;
 }

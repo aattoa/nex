@@ -2,7 +2,7 @@ CSANITIZE = -fsanitize=undefined -fsanitize=address
 CFLAGS    = -std=c99 -Wall -Wextra -Wpedantic -Werror -g -Os
 CC        = cc
 
-SOURCES = main.c editor.c cmdline.c terminal.c filebuf.c vector.c strbuf.c view.c util.c
+SOURCES = main.c editor.c cmdline.c editline.c terminal.c filebuf.c vector.c strbuf.c view.c util.c
 OBJECTS = ${SOURCES:.c=.o}
 BINARY  = nex
 

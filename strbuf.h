@@ -37,4 +37,8 @@ bool strbuf_insert(struct strbuf *strbuf, size_t index, char character) NEX_NONN
 
 bool strbuf_erase(struct strbuf *strbuf, size_t index) NEX_NONNULL;
 
+bool strbuf_vformat(struct strbuf *strbuf, size_t max, const char* restrict fmt, va_list args) NEX_NONNULL;
+
+bool strbuf_format(struct strbuf *strbuf, size_t max, const char* restrict fmt, ...) NEX_NONNULL NEX_GNU_ATTRIBUTE(format(printf, 3, 4));
+
 #endif // NEX_STRBUF_H

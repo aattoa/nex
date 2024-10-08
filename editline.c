@@ -3,17 +3,19 @@
 #include <ctype.h>
 #include <limits.h>
 
+static const int step = 1;
+
 static enum editline_status editline_cursor_left(size_t *cursor) {
     if (*cursor != 0) {
-        --*cursor;
+        *cursor -= min_uz(*cursor, step);
         return editline_ok;
     }
     return editline_fail;
 }
 
 static enum editline_status editline_cursor_right(struct strbuf *line, size_t *cursor) {
-    if (*cursor != line->len) {
-        ++*cursor;
+    if (*cursor < line->len) {
+        *cursor = min_uz(*cursor + step, line->len);
         return editline_ok;
     }
     return editline_fail;

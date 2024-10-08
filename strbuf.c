@@ -1,4 +1,5 @@
 #include "strbuf.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -122,4 +123,28 @@ bool strbuf_erase(struct strbuf *strbuf, size_t index) {
         strbuf->len - index);
     --strbuf->len;
     return true;
+}
+
+bool strbuf_vformat(struct strbuf *strbuf, size_t max, const char* restrict fmt, va_list args) {
+    if (max == 0) {
+        return false;
+    }
+    if (!strbuf_reserve(strbuf, strbuf->len + max)) {
+        return false;
+    }
+    int result = vsnprintf(strbuf->ptr + strbuf->len, max, fmt, args);
+    if (result < 0) {
+        strbuf->ptr[strbuf->len] = 0;
+        return false;
+    }
+    strbuf->len += strlen(strbuf->ptr + strbuf->len);
+    return true;
+}
+
+bool strbuf_format(struct strbuf *strbuf, size_t max, const char* restrict fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    bool result = strbuf_vformat(strbuf, max, fmt, args);
+    va_end(args);
+    return result;
 }

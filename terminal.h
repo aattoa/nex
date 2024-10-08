@@ -10,10 +10,12 @@ struct termpos {
 };
 
 struct termsize {
-    int16_t w, h;
+    int16_t width, height;
 };
 
 int terminal_read_input(void) NEX_NODISCARD;
+
+struct termsize terminal_get_size(void) NEX_NODISCARD;
 
 void terminal_enter_raw_mode(void);
 

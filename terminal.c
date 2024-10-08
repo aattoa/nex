@@ -3,12 +3,11 @@
 #include "terminal.h"
 
 #include <errno.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <poll.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -75,6 +74,12 @@ int terminal_read_input(void) {
         return NEX_KEY_BACKSPACE;
     }
     return byte;
+}
+
+struct termsize terminal_get_size(void) {
+    struct winsize winsize;
+    require(ioctl(STDIN_FILENO, TIOCGWINSZ, &winsize) != -1, "ioctl");
+    return (struct termsize) { .width = winsize.ws_col, .height = winsize.ws_row };
 }
 
 static struct termios previous_term;

@@ -1,13 +1,15 @@
 #include "editor.h"
 #include "editline.h"
-#include <stdarg.h>
 
-struct editor editor_new(void) {
+struct editor editor_new(struct termsize size) {
     return (struct editor) {
         .filebufs = vector_new(sizeof(struct filebuf), filebuf_destroy),
         .message = strbuf_new(),
         .cmdline = strbuf_new(),
         .editline = NULL,
+        .size = size,
+        .frame = (struct editor_frame) { .top_line = 0, .leftmost_column = 0 },
+        .settings = nex_settings_new(),
         .mode = editor_mode_cmdline,
         .cmdline_cursor = 0,
         .editline_cursor = 0,
@@ -20,7 +22,7 @@ void editor_free(struct editor *editor) {
     vector_free(&editor->filebufs);
     strbuf_free(&editor->message);
     strbuf_free(&editor->cmdline);
-    *editor = editor_new();
+    *editor = editor_new(editor->size);
 }
 
 enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path) {
@@ -80,20 +82,13 @@ bool editor_set_focus(struct editor *editor, size_t focus) {
     return false;
 }
 
-bool editor_set_message(struct editor *editor, struct view message) {
-    strbuf_clear(&editor->message);
-    return strbuf_append(&editor->message, message);
-}
-
 bool editor_print_message(struct editor *editor, const char *restrict fmt, ...) {
-    char message[256];
-
+    strbuf_clear(&editor->message);
     va_list args;
     va_start(args, fmt);
-    int result = vsnprintf(message, sizeof(message), fmt, args);
+    bool result = strbuf_vformat(&editor->message, 256, fmt, args);
     va_end(args);
-
-    return result > 0 && editor_set_message(editor, view_from(message));
+    return result;
 }
 
 bool editor_show_filename(struct editor *editor) {
@@ -126,4 +121,23 @@ bool editor_handle_key_editline(struct editor *editor, int key) {
         return true;
     }
     return status == editline_ok;
+}
+
+void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff) {
+#define first (*first)
+#define last (first + dimension - 1)
+    if (cursor < first) {
+        first -= (first - cursor);
+    }
+    else if (cursor > last) {
+        first += (cursor - last);
+    }
+    if ((cursor - first) < scrolloff) {
+        first -= min_uz(first, scrolloff - (cursor - first));
+    }
+    else if ((last - cursor) < scrolloff) {
+        first += (scrolloff - (last - cursor));
+    }
+#undef last
+#undef first
 }

@@ -88,3 +88,9 @@ void view_trim_whitespace(struct view *view) {
         view_remove_suffix_unchecked(view, 1);
     }
 }
+
+struct view view_subview(struct view view, size_t offset, size_t length) {
+    view_remove_prefix_unchecked(&view, min_uz(view.len, offset));
+    view.len = min_uz(view.len, length);
+    return view;
+}

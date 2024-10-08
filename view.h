@@ -36,4 +36,6 @@ void view_remove_suffix_unchecked(struct view *view, size_t length) NEX_NONNULL;
 
 void view_trim_whitespace(struct view *view) NEX_NONNULL;
 
+struct view view_subview(struct view view, size_t offset, size_t length) NEX_CONST;
+
 #endif // NEX_VIEW_H

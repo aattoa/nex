@@ -42,4 +42,12 @@ const char *stror(const char *a, const char *b) {
     return a ? a : b ? b : "(null)";
 }
 
+bool is_digit(int key) NEX_NODISCARD;
+bool is_print(int key) NEX_NODISCARD;
+bool is_space(int key) NEX_NODISCARD;
+bool is_alpha(int key) NEX_NODISCARD;
+bool is_alnum(int key) NEX_NODISCARD;
+bool is_lower(int key) NEX_NODISCARD;
+bool is_upper(int key) NEX_NODISCARD;
+
 #endif // NEX_UTIL_H

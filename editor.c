@@ -7,12 +7,12 @@ struct editor editor_new(struct termsize size) {
         .message = strbuf_new(),
         .cmdline = strbuf_new(),
         .editline = NULL,
+        .cmdline_state = editline_state_new(),
+        .editline_state = editline_state_new(),
         .size = size,
         .frame = (struct editor_frame) { .top_line = 0, .leftmost_column = 0 },
         .settings = nex_settings_new(),
         .mode = editor_mode_cmdline,
-        .cmdline_cursor = 0,
-        .editline_cursor = 0,
         .focus = 0,
         .line_index = 0,
     };
@@ -102,21 +102,20 @@ bool editor_show_filename(struct editor *editor) {
 }
 
 bool editor_handle_key_cmdline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(&editor->cmdline, &editor->cmdline_cursor, key);
+    enum editline_status status = editline_handle_key(&editor->cmdline, &editor->cmdline_state, key);
     if (status == editline_accept) {
         bool result = editor_execute_command(editor, strbuf_view(editor->cmdline));
         strbuf_clear(&editor->cmdline);
-        editor->cmdline_cursor = 0;
+        editor->cmdline_state = editline_state_new();
         return result;
     }
     return status == editline_ok;
 }
 
 bool editor_handle_key_editline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(editor->editline, &editor->editline_cursor, key);
+    enum editline_status status = editline_handle_key(editor->editline, &editor->editline_state, key);
     if (status == editline_accept) {
-        editor->editline = NULL;
-        editor->editline_cursor = 0;
+        editor->editline_state = editline_state_new();
         editor->mode = editor_mode_cmdline;
         return true;
     }

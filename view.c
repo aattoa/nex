@@ -76,10 +76,6 @@ void view_remove_suffix_unchecked(struct view *view, size_t length) {
     view->len -= length;
 }
 
-static bool is_space(char character) {
-    return character == ' ' || character == '\t';
-}
-
 void view_trim_whitespace(struct view *view) {
     while (view->len != 0 && is_space(view->ptr[0])) {
         view_remove_prefix_unchecked(view, 1);

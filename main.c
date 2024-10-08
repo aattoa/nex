@@ -47,7 +47,7 @@ static void handle_cmdline(struct editor *editor) {
         TERMINAL_CLEAR,
         stror(editor->cmdline.ptr, ""),
         stror(editor->message.ptr, "none"));
-    terminal_set_cursor((struct termpos) { .x = editor->cmdline_cursor + 2, .y = 1 });
+    terminal_set_cursor((struct termpos) { .x = editor->cmdline_state.cursor + 2, .y = 1 });
     fflush(stdout);
     editor_handle_key_cmdline(editor, terminal_read_input());
 }
@@ -59,15 +59,16 @@ static void handle_editline(struct editor *editor) {
     struct view line = view_subview(strbuf_view(*editor->editline), editor->frame.leftmost_column, editor->size.width);
     terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
     terminal_print(
-        "%sEditing line %zu\n%.*s\ncursor: %zu, leftmost: %zu, status: %s",
+        "%sEditing line %zu\n%.*s\ncursor: %zu, leftmost: %zu, count: %zu, status: %s",
         TERMINAL_CLEAR,
         editor->line_index + 1,
         (int)line.len,
         stror(line.ptr, ""),
-        editor->editline_cursor + 1,
+        editor->editline_state.cursor + 1,
         editor->frame.leftmost_column + 1,
+        editor->editline_state.count,
         stror(editor->message.ptr, "none"));
-    terminal_set_cursor((struct termpos) { .x = editor->editline_cursor + 1 - editor->frame.leftmost_column, .y = 2 });
+    terminal_set_cursor((struct termpos) { .x = editor->editline_state.cursor + 1 - editor->frame.leftmost_column, .y = 2 });
     fflush(stdout);
     editor_handle_key_editline(editor, terminal_read_input());
 }
@@ -103,7 +104,7 @@ int main(int argc, const char **argv) {
             editor_cursor_scroll(
                 &editor.frame.leftmost_column,
                 editor.size.width,
-                editor.editline_cursor,
+                editor.editline_state.cursor,
                 editor.settings.sidescrolloff);
         }
         else {

@@ -5,6 +5,7 @@
 #include "filebuf.h"
 #include "terminal.h"
 #include "settings.h"
+#include "editline.h"
 
 struct editor_frame {
     size_t top_line;
@@ -22,12 +23,12 @@ struct editor {
     struct strbuf message;
     struct strbuf cmdline;
     struct strbuf *editline;
+    struct editline_state cmdline_state;
+    struct editline_state editline_state;
     struct termsize size;
     struct editor_frame frame;
     struct nex_settings settings;
     enum editor_mode mode;
-    size_t cmdline_cursor;
-    size_t editline_cursor;
     size_t focus;
     size_t line_index;
 };

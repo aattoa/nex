@@ -22,7 +22,7 @@ static bool cmdline_edit_line(struct editor *editor) {
     struct strbuf *line = editor_current_line(editor);
     if (line != NULL) {
         editor->editline = line;
-        editor->editline_cursor = 0;
+        editor->editline_state = editline_state_new();
         editor->frame.leftmost_column = 0;
         editor->mode = editor_mode_editline;
         return true;

@@ -42,6 +42,10 @@ const char *stror(const char *a, const char *b) {
     return a ? a : b ? b : "(null)";
 }
 
+size_t digit_count(size_t n) NEX_CONST;
+
+size_t saturating_sub(size_t a, size_t b) NEX_CONST;
+
 bool is_digit(int key) NEX_NODISCARD;
 bool is_print(int key) NEX_NODISCARD;
 bool is_space(int key) NEX_NODISCARD;

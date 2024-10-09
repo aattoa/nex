@@ -6,16 +6,13 @@
 #include "terminal.h"
 #include "settings.h"
 #include "editline.h"
-
-struct editor_frame {
-    size_t top_line;
-    size_t leftmost_column;
-};
+#include "visual.h"
 
 enum editor_mode {
     editor_mode_quit,
     editor_mode_cmdline,
     editor_mode_editline,
+    editor_mode_vi,
 };
 
 struct editor {
@@ -25,8 +22,8 @@ struct editor {
     struct strbuf *editline;
     struct editline_state cmdline_state;
     struct editline_state editline_state;
+    struct vi_state vi_state;
     struct termsize size;
-    struct editor_frame frame;
     struct nex_settings settings;
     enum editor_mode mode;
     size_t focus;
@@ -58,6 +55,8 @@ bool editor_show_filename(struct editor *editor) NEX_NONNULL;
 bool editor_handle_key_cmdline(struct editor *editor, int key) NEX_NONNULL;
 
 bool editor_handle_key_editline(struct editor *editor, int key) NEX_NONNULL;
+
+bool editor_handle_key_vi(struct editor *editor, int key) NEX_NONNULL;
 
 void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff);
 

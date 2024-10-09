@@ -100,6 +100,10 @@ void terminal_set_cursor(struct termpos position) {
     require(printf("\033[%i;%iH", (int)position.y, (int)position.x) >= 0, "printf");
 }
 
+void terminal_flush(void) {
+    fflush(stdout);
+}
+
 void terminal_print(const char *restrict fmt, ...) {
     va_list args;
     va_start(args, fmt);

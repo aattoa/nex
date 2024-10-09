@@ -23,6 +23,8 @@ void terminal_restore_previous_mode(void);
 
 void terminal_set_cursor(struct termpos position);
 
+void terminal_flush(void);
+
 NEX_GNU_ATTRIBUTE(format(printf, 1, 2))
 void terminal_print(const char *restrict fmt, ...);
 
@@ -32,5 +34,6 @@ void terminal_print(const char *restrict fmt, ...);
 #define TERMINAL_HIDE_CURSOR            "\033[?25l"
 #define TERMINAL_ENTER_ALTERNATE_SCREEN "\033[?1049h"
 #define TERMINAL_LEAVE_ALTERNATE_SCREEN "\033[?1049l"
+#define TERMINAL_RESET_CURSOR           "\033[H"
 
 #endif // NEX_TERMINAL_H

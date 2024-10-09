@@ -11,6 +11,7 @@ static void show_usage(void) {
         "\nOptions:"
         "\n\t-h, --help    \tDisplay help information"
         "\n\t-v, --version \tDisplay version information"
+        "\n\t    --visual  \tStart in visual mode"
         "\n\t--            \tTreat remaining arguments as filenames");
 }
 
@@ -27,6 +28,9 @@ static void process_arguments(struct editor *editor, const char **begin, const c
             else if (streq(*arg, "-v") || streq(*arg, "--version")) {
                 puts("nex 0.0.1");
             }
+            else if (streq(*arg, "--visual")) {
+                editor->mode = editor_mode_vi;
+            }
             else {
                 fprintf(stderr, "Unrecognized option '%s'\n", *arg);
             }
@@ -41,14 +45,14 @@ static void process_arguments(struct editor *editor, const char **begin, const c
 }
 
 static void handle_cmdline(struct editor *editor) {
-    terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
     terminal_print(
-        "%s:%s\nstatus: %s",
+        "%s%s:%s\nstatus: %s",
+        TERMINAL_RESET_CURSOR,
         TERMINAL_CLEAR,
         stror(editor->cmdline.ptr, ""),
         stror(editor->message.ptr, "none"));
     terminal_set_cursor((struct termpos) { .x = editor->cmdline_state.cursor + 2, .y = 1 });
-    fflush(stdout);
+    terminal_flush();
     editor_handle_key_cmdline(editor, terminal_read_input());
 }
 
@@ -56,21 +60,55 @@ static void handle_editline(struct editor *editor) {
     if (editor->editline == NULL) {
         die("null editline");
     }
-    struct view line = view_subview(strbuf_view(*editor->editline), editor->frame.leftmost_column, editor->size.width);
-    terminal_set_cursor((struct termpos) { .x = 0, .y = 0 });
+    struct view line = view_subview(strbuf_view(*editor->editline), editor->editline_state.leftmost_column, editor->size.width);
     terminal_print(
-        "%sEditing line %zu\n%.*s\ncursor: %zu, leftmost: %zu, count: %zu, status: %s",
+        "%s%sEditing line %zu\n%.*s\ncursor: %zu, leftmost: %zu, count: %zu, status: %s",
+        TERMINAL_RESET_CURSOR,
         TERMINAL_CLEAR,
         editor->line_index + 1,
         (int)line.len,
         stror(line.ptr, ""),
         editor->editline_state.cursor + 1,
-        editor->frame.leftmost_column + 1,
+        editor->editline_state.leftmost_column + 1,
         editor->editline_state.count,
         stror(editor->message.ptr, "none"));
-    terminal_set_cursor((struct termpos) { .x = editor->editline_state.cursor + 1 - editor->frame.leftmost_column, .y = 2 });
-    fflush(stdout);
+    terminal_set_cursor((struct termpos) { .x = editor->editline_state.cursor + 1 - editor->editline_state.leftmost_column, .y = 2 });
+    terminal_flush();
     editor_handle_key_editline(editor, terminal_read_input());
+}
+
+static void handle_vi(struct editor *editor) {
+    struct filebuf *filebuf = editor_current_filebuf(editor);
+    if (filebuf == NULL) {
+        die("null visual filebuf");
+    }
+    size_t number_width = digit_count(editor->vi_state.frame.top + editor->size.height - 1);
+    size_t top = editor->vi_state.frame.top;
+    size_t bottom = min_uz(filebuf->lines.len, top + editor->size.height) - 1;
+    assert(top < bottom);
+    editor_print_message(editor, "number width: %zu, top: %zu, bottom: %zu", number_width, top, bottom);
+    terminal_print("%s", TERMINAL_RESET_CURSOR);
+    for (size_t i = top; i != bottom; ++i) {
+        struct strbuf *strbuf = vector_at(&filebuf->lines, i);
+        struct view line = view_subview(strbuf_view(*strbuf), editor->vi_state.frame.left, editor->size.width);
+        terminal_print(
+            "%s%*zu %.*s\n",
+            TERMINAL_CLEAR_LINE,
+            (int)number_width,
+            i + 1,
+            (int)min_uz(line.len, saturating_sub(editor->size.width, number_width + 1)),
+            stror(line.ptr, ""));
+    }
+    for (size_t i = bottom + 1; i < top + editor->size.height; ++i) {
+        terminal_print("%s~\n", TERMINAL_CLEAR_LINE);
+    }
+    terminal_print("%sStatus: %s", TERMINAL_CLEAR_LINE, stror(editor->message.ptr, "none"));
+    terminal_set_cursor((struct termpos) {
+        .x = editor->vi_state.cursor.x + 2 - editor->vi_state.frame.left + number_width,
+        .y = editor->vi_state.cursor.y + 1 - editor->vi_state.frame.top,
+    });
+    terminal_flush();
+    editor_handle_key_vi(editor, terminal_read_input());
 }
 
 static void terminal_start(void) {
@@ -93,7 +131,8 @@ int main(int argc, const char **argv) {
     terminal_start();
     atexit(terminal_stop);
 
-    editor.settings.sidescrolloff = 20;
+    editor.settings.sidescrolloff = 40;
+    editor.settings.scrolloff = 10;
 
     while (editor.mode != editor_mode_quit) {
         if (editor.mode == editor_mode_cmdline) {
@@ -102,10 +141,23 @@ int main(int argc, const char **argv) {
         else if (editor.mode == editor_mode_editline) {
             handle_editline(&editor);
             editor_cursor_scroll(
-                &editor.frame.leftmost_column,
+                &editor.editline_state.leftmost_column,
                 editor.size.width,
                 editor.editline_state.cursor,
                 editor.settings.sidescrolloff);
+        }
+        else if (editor.mode == editor_mode_vi) {
+            handle_vi(&editor);
+            editor_cursor_scroll(
+                &editor.vi_state.frame.left,
+                editor.size.width,
+                editor.vi_state.cursor.x,
+                editor.settings.sidescrolloff);
+            editor_cursor_scroll(
+                &editor.vi_state.frame.top,
+                editor.size.height - 1, // -1 for status bar
+                editor.vi_state.cursor.y,
+                editor.settings.scrolloff);
         }
         else {
             die("unhandled mode");

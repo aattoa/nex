@@ -103,6 +103,7 @@ struct editline_state editline_state_new(void) {
     return (struct editline_state) {
         .cursor = 0,
         .count = 0,
+        .leftmost_column = 0,
         .mode = editline_mode_insert,
     };
 }

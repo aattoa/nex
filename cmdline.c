@@ -23,11 +23,20 @@ static bool cmdline_edit_line(struct editor *editor) {
     if (line != NULL) {
         editor->editline = line;
         editor->editline_state = editline_state_new();
-        editor->frame.leftmost_column = 0;
         editor->mode = editor_mode_editline;
         return true;
     }
     editor_print_message(editor, "Line number %zu is out of range", editor->line_index + 1);
+    return false;
+}
+
+static bool cmdline_visual(struct editor *editor) {
+    if (editor_current_filebuf(editor) != NULL) {
+        editor->vi_state = vi_state_new();
+        editor->mode = editor_mode_vi;
+        return true;
+    }
+    editor_print_message(editor, "No file in focus");
     return false;
 }
 
@@ -42,6 +51,9 @@ bool editor_execute_command(struct editor *editor, struct view cmd) {
     }
     if (view_deep_equal(cmd, view_from("el")) || view_deep_equal(cmd, view_from("editline"))) {
         return cmdline_edit_line(editor);
+    }
+    if (view_deep_equal(cmd, view_from("vi")) || view_deep_equal(cmd, view_from("visual"))) {
+        return cmdline_visual(editor);
     }
     if (view_deep_equal(cmd, view_from("w")) || view_deep_equal(cmd, view_from("write"))) {
         return cmdline_write(editor);

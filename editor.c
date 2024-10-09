@@ -10,7 +10,6 @@ struct editor editor_new(struct termsize size) {
         .cmdline_state = editline_state_new(),
         .editline_state = editline_state_new(),
         .size = size,
-        .frame = (struct editor_frame) { .top_line = 0, .leftmost_column = 0 },
         .settings = nex_settings_new(),
         .mode = editor_mode_cmdline,
         .focus = 0,
@@ -120,6 +119,20 @@ bool editor_handle_key_editline(struct editor *editor, int key) {
         return true;
     }
     return status == editline_ok;
+}
+
+bool editor_handle_key_vi(struct editor *editor, int key) {
+    struct filebuf *filebuf = editor_current_filebuf(editor);
+    if (filebuf == NULL) {
+        return false;
+    }
+    enum vi_status status = vi_handle_key(filebuf, &editor->vi_state, key);
+    if (status == vi_leave) {
+        editor->vi_state = vi_state_new();
+        editor->mode = editor_mode_cmdline;
+        return true;
+    }
+    return status == vi_ok;
 }
 
 void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff) {

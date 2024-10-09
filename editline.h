@@ -18,6 +18,7 @@ enum editline_mode {
 struct editline_state {
     size_t cursor;
     size_t count;
+    size_t leftmost_column;
     enum editline_mode mode;
 };
 

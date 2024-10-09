@@ -12,6 +12,16 @@ void die(const char *restrict fmt, ...) {
     exit(EXIT_FAILURE);
 }
 
+size_t digit_count(size_t n) {
+    size_t digits = 0;
+    do { n /= 10; ++digits; } while (n != 0);
+    return digits;
+}
+
+size_t saturating_sub(size_t a, size_t b) {
+    return a < b ? 0 : a - b;
+}
+
 #define KEY_PREDICATE(category) bool is_ ## category(int key) { return key >= 0 && key <= UCHAR_MAX && is ## category(key); }
 KEY_PREDICATE(digit)
 KEY_PREDICATE(print)

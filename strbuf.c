@@ -27,8 +27,7 @@ void strbuf_clear(struct strbuf *strbuf) {
     }
 }
 
-NEX_GNU_ATTRIBUTE(const)
-static size_t strbuf_grow_capacity(size_t capacity) {
+NEX_CONST static size_t strbuf_grow_capacity(size_t capacity) {
     return capacity == 0 ? 16 : min_uz(capacity * 2, capacity + 1028);
 }
 
@@ -67,16 +66,6 @@ bool strbuf_reserve(struct strbuf *strbuf, size_t capacity) {
     return true;
 }
 
-bool strbuf_append(struct strbuf *strbuf, struct view view) {
-    if (!strbuf_reserve(strbuf, strbuf->len + view.len)) {
-        return false;
-    }
-    memcpy(strbuf->ptr + strbuf->len, view.ptr, view.len);
-    strbuf->len += view.len;
-    strbuf->ptr[strbuf->len] = 0;
-    return true;
-}
-
 bool strbuf_push(struct strbuf *strbuf, char character) {
     if (!strbuf_grow_if_at_capacity(strbuf)) {
         return false;
@@ -86,11 +75,16 @@ bool strbuf_push(struct strbuf *strbuf, char character) {
     return true;
 }
 
-bool strbuf_pop(struct strbuf *strbuf) {
-    if (strbuf->len == 0) {
+bool strbuf_push_view(struct strbuf *strbuf, struct view view) {
+    if (view.len == 0) {
+        return true;
+    }
+    if (!strbuf_reserve(strbuf, strbuf->len + view.len)) {
         return false;
     }
-    strbuf->ptr[--strbuf->len] = 0;
+    memcpy(strbuf->ptr + strbuf->len, view.ptr, view.len);
+    strbuf->len += view.len;
+    strbuf->ptr[strbuf->len] = 0;
     return true;
 }
 
@@ -98,7 +92,7 @@ bool strbuf_insert(struct strbuf *strbuf, size_t index, char character) {
     if (index == strbuf->len) {
         return strbuf_push(strbuf, character);
     }
-    if (!strbuf_grow_if_at_capacity(strbuf)) {
+    if (index > strbuf->len || !strbuf_grow_if_at_capacity(strbuf)) {
         return false;
     }
     memmove(
@@ -110,18 +104,55 @@ bool strbuf_insert(struct strbuf *strbuf, size_t index, char character) {
     return true;
 }
 
-bool strbuf_erase(struct strbuf *strbuf, size_t index) {
-    if (index >= strbuf->len) {
+bool strbuf_insert_view(struct strbuf *strbuf, size_t index, struct view view) {
+    if (view.len == 0) {
+        return true;
+    }
+    if (index == strbuf->len) {
+        return strbuf_push_view(strbuf, view);
+    }
+    if (index > strbuf->len || !strbuf_reserve(strbuf, strbuf->len + view.len)) {
         return false;
     }
-    if (index == strbuf->len - 1) {
-        return strbuf_pop(strbuf);
+    memmove(
+        strbuf->ptr + index + view.len,
+        strbuf->ptr + index,
+        strbuf->len - index + 1);
+    memcpy(strbuf->ptr + index, view.ptr, view.len);
+    strbuf->len += view.len;
+    strbuf->ptr[strbuf->len] = 0;
+    return true;
+}
+
+bool strbuf_pop(struct strbuf *strbuf) {
+    return strbuf_pop_n(strbuf, 1);
+}
+
+bool strbuf_pop_n(struct strbuf *strbuf, size_t n) {
+    if (strbuf->len < n) {
+        return false;
+    }
+    strbuf->len -= n;
+    strbuf->ptr[strbuf->len] = 0;
+    return true;
+}
+
+bool strbuf_erase(struct strbuf *strbuf, size_t index) {
+    return strbuf_erase_n(strbuf, index, 1);
+}
+
+bool strbuf_erase_n(struct strbuf *strbuf, size_t index, size_t n) {
+    if (index + n >= strbuf->len) {
+        return false;
+    }
+    if (index == strbuf->len - n) {
+        return strbuf_pop_n(strbuf, n);
     }
     memmove(
         strbuf->ptr + index,
-        strbuf->ptr + index + 1,
-        strbuf->len - index);
-    --strbuf->len;
+        strbuf->ptr + index + n,
+        strbuf->len - index - n + 1);
+    strbuf->len -= n;
     return true;
 }
 

@@ -3,6 +3,7 @@
 
 struct editor editor_new(struct termsize size) {
     return (struct editor) {
+        .registers = registers_new(),
         .filebufs = vector_new(sizeof(struct filebuf), filebuf_destroy),
         .message = strbuf_new(),
         .cmdline = strbuf_new(),
@@ -18,6 +19,7 @@ struct editor editor_new(struct termsize size) {
 }
 
 void editor_free(struct editor *editor) {
+    registers_free(&editor->registers);
     vector_free(&editor->filebufs);
     strbuf_free(&editor->message);
     strbuf_free(&editor->cmdline);
@@ -26,7 +28,7 @@ void editor_free(struct editor *editor) {
 
 enum filebuf_status editor_add_filebuf(struct editor *editor, const char *path) {
     struct filebuf filebuf = filebuf_new();
-    if (!strbuf_append(&filebuf.path, view_from(path))) {
+    if (!strbuf_push_view(&filebuf.path, view_from(path))) {
         return filebuf_bad_alloc;
     }
     enum filebuf_status status = filebuf_read(&filebuf);
@@ -126,7 +128,7 @@ bool editor_handle_key_vi(struct editor *editor, int key) {
     if (filebuf == NULL) {
         return false;
     }
-    enum vi_status status = vi_handle_key(filebuf, &editor->vi_state, key);
+    enum vi_status status = vi_handle_key(filebuf, &editor->vi_state, &editor->registers, key);
     if (status == vi_leave) {
         editor->vi_state = vi_state_new();
         editor->mode = editor_mode_cmdline;

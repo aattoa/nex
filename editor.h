@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "editline.h"
 #include "visual.h"
+#include "registers.h"
 
 enum editor_mode {
     editor_mode_quit,
@@ -16,6 +17,7 @@ enum editor_mode {
 };
 
 struct editor {
+    struct registers registers;
     struct vector filebufs; // Element: `struct filebuf`
     struct strbuf message;
     struct strbuf cmdline;

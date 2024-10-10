@@ -27,15 +27,21 @@ bool strbuf_resize(struct strbuf *strbuf, size_t size) NEX_NONNULL;
 
 bool strbuf_reserve(struct strbuf *strbuf, size_t capacity) NEX_NONNULL;
 
-bool strbuf_append(struct strbuf *strbuf, struct view view) NEX_NONNULL;
-
 bool strbuf_push(struct strbuf *strbuf, char character) NEX_NONNULL;
 
-bool strbuf_pop(struct strbuf *strbuf) NEX_NONNULL;
+bool strbuf_push_view(struct strbuf *strbuf, struct view view) NEX_NONNULL;
 
 bool strbuf_insert(struct strbuf *strbuf, size_t index, char character) NEX_NONNULL;
 
+bool strbuf_insert_view(struct strbuf *strbuf, size_t index, struct view view) NEX_NONNULL;
+
+bool strbuf_pop(struct strbuf *strbuf) NEX_NONNULL;
+
+bool strbuf_pop_n(struct strbuf *strbuf, size_t n) NEX_NONNULL;
+
 bool strbuf_erase(struct strbuf *strbuf, size_t index) NEX_NONNULL;
+
+bool strbuf_erase_n(struct strbuf *strbuf, size_t index, size_t n) NEX_NONNULL;
 
 bool strbuf_vformat(struct strbuf *strbuf, size_t max, const char* restrict fmt, va_list args) NEX_NONNULL;
 

@@ -215,3 +215,13 @@ struct vi_state vi_state_new(void) {
         .regname = 0,
     };
 }
+
+const char *vi_mode_describe(enum vi_mode mode) {
+    switch (mode) {
+    case vi_mode_normal:           return "Normal";
+    case vi_mode_insert:           return "Insert";
+    case vi_mode_cmdline:          return "Cmdline";
+    case vi_mode_register_pending: return "Register pending";
+    default:                       return "Unknown";
+    }
+}

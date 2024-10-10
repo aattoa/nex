@@ -86,7 +86,6 @@ static void handle_vi(struct editor *editor) {
     size_t top = editor->vi_state.frame.top;
     size_t bottom = min_uz(filebuf->lines.len, top + editor->size.height) - 1;
     assert(top < bottom);
-    editor_print_message(editor, "number width: %zu, top: %zu, bottom: %zu", number_width, top, bottom);
     terminal_print("%s", TERMINAL_RESET_CURSOR);
     for (size_t i = top; i != bottom; ++i) {
         struct strbuf *strbuf = vector_at(&filebuf->lines, i);
@@ -102,7 +101,14 @@ static void handle_vi(struct editor *editor) {
     for (size_t i = bottom + 1; i < top + editor->size.height; ++i) {
         terminal_print("%s~\n", TERMINAL_CLEAR_LINE);
     }
-    terminal_print("%sStatus: %s", TERMINAL_CLEAR_LINE, stror(editor->message.ptr, "none"));
+    terminal_print("%s", TERMINAL_CLEAR_LINE);
+    if (editor->settings.showmode) {
+        terminal_print("-- %s -- ", vi_mode_describe(editor->vi_state.mode));
+    }
+    if (editor->settings.ruler) {
+        terminal_print("%zu,%zu ", editor->vi_state.cursor.y + 1, editor->vi_state.cursor.x + 1);
+    }
+    terminal_print("count: %zu, status: %s", editor->vi_state.count, stror(editor->message.ptr, "none"));
     terminal_set_cursor((struct termpos) {
         .x = editor->vi_state.cursor.x + 2 - editor->vi_state.frame.left + number_width,
         .y = editor->vi_state.cursor.y + 1 - editor->vi_state.frame.top,

@@ -38,4 +38,6 @@ enum vi_status vi_handle_key(struct filebuf *filebuf, struct vi_state *state, st
 
 struct vi_state vi_state_new(void) NEX_CONST;
 
+const char *vi_mode_describe(enum vi_mode mode) NEX_CONST;
+
 #endif // NEX_VISUAL_H

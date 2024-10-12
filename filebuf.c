@@ -105,6 +105,102 @@ enum filebuf_status lines_write(struct vector lines, const char *path) {
     return status;
 }
 
+bool lines_split_line(struct vector *lines, struct position position) {
+    struct strbuf *line = vector_at(lines, position.y);
+    if (line == NULL) {
+        return false;
+    }
+    struct strbuf new_line = strbuf_new();
+    if (!strbuf_push_view(&new_line, view_subview(strbuf_view(*line), position.x, SIZE_MAX))) {
+        return false;
+    }
+    strbuf_resize(line, position.x);
+    if (!vector_insert(lines, position.y + 1, &new_line)) {
+        strbuf_free(&new_line);
+        return false;
+    }
+    return true;
+}
+
+bool lines_collect_range(struct vector *lines, struct range range, struct strbuf *output) {
+    if (range.begin.y == range.end.y) {
+        struct strbuf *line = vector_at(lines, range.begin.y);
+        return line != NULL
+            && range.begin.x <= range.end.x
+            && strbuf_push_view(output, view_subview(strbuf_view(*line), range.begin.x, range.end.x - range.begin.x + 1));
+    }
+    struct strbuf *first_line = vector_at(lines, range.begin.y);
+    if (first_line == NULL || range.begin.y > range.end.y) {
+        return false;
+    }
+    strbuf_push_view(output, view_subview(strbuf_view(*first_line), range.begin.x, saturating_sub(first_line->len, range.begin.x)));
+    for (size_t i = range.begin.y + 1; i < range.end.y; ++i) {
+        struct strbuf *line = vector_at(lines, i);
+        if (line == NULL || !strbuf_push(output, '\n') || !strbuf_push_view(output, strbuf_view(*line))) {
+            return false;
+        }
+    }
+    struct strbuf *last_line = vector_at(lines, range.end.y);
+    return last_line != NULL
+        && strbuf_push(output, '\n')
+        && strbuf_push_view(output, view_subview(strbuf_view(*last_line), 0, range.end.x + 1));
+}
+
+bool lines_erase_range(struct vector *lines, struct range range) {
+    if (range.begin.y == range.end.y) {
+        struct strbuf *line = vector_at(lines, range.begin.y);
+        return line != NULL
+            && range.begin.x <= range.end.x
+            && strbuf_erase_n(line, range.begin.x, range.end.x - range.begin.x + 1);
+    }
+    struct strbuf *first_line = vector_at(lines, range.begin.y);
+    struct strbuf *last_line = vector_at(lines, range.end.y);
+    return first_line != NULL
+        && last_line != NULL
+        && range.begin.y < range.end.y
+        && range.begin.x <= first_line->len
+        && range.end.x <= last_line->len
+        && strbuf_pop_n(first_line, first_line->len - range.begin.x)
+        && strbuf_push_view(first_line, view_subview(strbuf_view(*last_line), range.end.x + 1, SIZE_MAX))
+        && vector_erase_n(lines, range.begin.y + 1, range.end.y - range.begin.y);
+}
+
+bool lines_insert(struct vector *lines, struct position position, struct view view) {
+    struct strbuf *first_line = vector_at(lines, position.y);
+    if (first_line == NULL) {
+        return false;
+    }
+    struct view left, right;
+    if (!view_split_char(view, &left, &right, '\n')) {
+        return strbuf_insert_view(first_line, position.x, view);
+    }
+    if (!lines_split_line(lines, position)) {
+        return false;
+    }
+    if (!strbuf_push_view(vector_at(lines, position.y), left)) {
+        return false;
+    }
+    while (view_split_char(right, &left, &right, '\n')) {
+        struct strbuf new_line = strbuf_new();
+        if (!strbuf_push_view(&new_line, left)) {
+            return false;
+        }
+        if (!vector_insert(lines, ++position.y, &new_line)) {
+            strbuf_free(&new_line);
+            return false;
+        }
+    }
+    return strbuf_insert_view(vector_at(lines, position.y + 1), 0, right);
+}
+
+bool position_less_than(struct position left, struct position right) {
+    return (left.y != right.y) ? (left.y < right.y) : (left.x < right.x);
+}
+
+struct range range_new(struct position a, struct position b) {
+    return position_less_than(a, b) ? (struct range) { a, b } : (struct range) { b, a };
+}
+
 const char *filebuf_status_describe(enum filebuf_status status) {
     switch (status) {
     case filebuf_ok:             return "ok";

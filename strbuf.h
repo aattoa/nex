@@ -3,8 +3,6 @@
 
 #include "util.h"
 #include "view.h"
-#include <stdbool.h>
-#include <stddef.h>
 
 // A growable, null terminated, owning string type.
 struct strbuf {

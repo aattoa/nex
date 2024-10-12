@@ -8,6 +8,7 @@
 enum vi_mode {
     vi_mode_normal,
     vi_mode_insert,
+    vi_mode_select,
     vi_mode_cmdline,
     vi_mode_register_pending,
 };
@@ -16,12 +17,9 @@ struct vi_frame {
     size_t top, left;
 };
 
-struct vi_cursor {
-    size_t x, y;
-};
-
 struct vi_state {
-    struct vi_cursor cursor;
+    struct position select_start;
+    struct position cursor;
     struct vi_frame frame;
     enum vi_mode mode;
     size_t count;

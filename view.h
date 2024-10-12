@@ -2,8 +2,6 @@
 #define NEX_VIEW_H
 
 #include "util.h"
-#include <stdbool.h>
-#include <stddef.h>
 
 struct view {
     size_t len;
@@ -37,5 +35,11 @@ void view_remove_suffix_unchecked(struct view *view, size_t length) NEX_NONNULL;
 void view_trim_whitespace(struct view *view) NEX_NONNULL;
 
 struct view view_subview(struct view view, size_t offset, size_t length) NEX_CONST;
+
+size_t view_find(struct view view, char byte) NEX_PURE;
+
+bool view_split(struct view view, struct view *restrict left, struct view *restrict right, size_t offset);
+
+bool view_split_char(struct view view, struct view *restrict left, struct view *restrict right, char byte);
 
 #endif // NEX_VIEW_H

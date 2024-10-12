@@ -2,8 +2,6 @@
 #define NEX_VECTOR_H
 
 #include "util.h"
-#include <stdbool.h>
-#include <stddef.h>
 
 struct vector {
     void *ptr;
@@ -29,8 +27,12 @@ bool vector_push(struct vector *vector, const void *bytes) NEX_NONNULL;
 
 bool vector_pop(struct vector *vector) NEX_NONNULL;
 
+bool vector_pop_n(struct vector *vector, size_t n) NEX_NONNULL;
+
 bool vector_insert(struct vector *vector, size_t index, const void *bytes) NEX_NONNULL;
 
 bool vector_erase(struct vector *vector, size_t index) NEX_NONNULL;
+
+bool vector_erase_n(struct vector *vector, size_t index, size_t n) NEX_NONNULL;
 
 #endif // NEX_VECTOR_H

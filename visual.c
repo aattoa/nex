@@ -80,9 +80,9 @@ static enum vi_status erase(struct filebuf *filebuf, struct vi_state *state, str
     return vi_ok;
 }
 
-static enum vi_status paste(struct filebuf *filebuf, struct vi_state *state, struct registers *registers, int offset) {
+static enum vi_status paste(struct filebuf *filebuf, struct vi_state *state, struct registers *registers) {
     struct strbuf *reg = register_get(registers, consume_regname(state));
-    strbuf_insert_view(current_line(filebuf, state), state->cursor.x + offset, strbuf_view(*reg));
+    lines_insert(&filebuf->lines, state->cursor, strbuf_view(*reg));
     return vi_ok;
 }
 
@@ -137,13 +137,15 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
         insert_line(filebuf, state->cursor.y);
         state->cursor.x = 0;
         return start_insert(state);
+    case 'v':
+        state->select_start = state->cursor;
+        state->mode = vi_mode_select;
+        return vi_ok;
     case '"':
         state->mode = vi_mode_register_pending;
         return vi_ok;
     case 'p':
-        return paste(filebuf, state, registers, 1);
-    case 'P':
-        return paste(filebuf, state, registers, 0);
+        return paste(filebuf, state, registers);
     case 'x':
         return erase(filebuf, state, registers);
     }
@@ -165,6 +167,15 @@ static enum vi_status insert(struct filebuf *filebuf, struct vi_state *state, in
     return vi_fail;
 }
 
+static enum vi_status enter(struct filebuf *filebuf, struct vi_state *state) {
+    if (!lines_split_line(&filebuf->lines, state->cursor)) {
+        return vi_fail;
+    }
+    ++state->cursor.y;
+    state->cursor.x = 0;
+    return vi_ok;
+}
+
 static enum vi_status handle_key_insert(struct filebuf *filebuf, struct vi_state *state, int key) {
     if (is_print(key)) {
         return insert(filebuf, state, key);
@@ -172,8 +183,39 @@ static enum vi_status handle_key_insert(struct filebuf *filebuf, struct vi_state
     switch (key) {
     case NEX_KEY_ESCAPE:    cursor_left(state); state->mode = vi_mode_normal; return vi_ok;
     case NEX_KEY_BACKSPACE: return backspace(filebuf, state);
+    case NEX_KEY_ENTER:     return enter(filebuf, state);
     }
     return vi_fail;
+}
+
+static enum vi_status yank_range(struct filebuf *filebuf, struct vi_state *state, struct registers *registers) {
+    struct strbuf *reg = register_get(registers, consume_regname(state));
+    struct range range = range_new(state->select_start, state->cursor);
+    state->mode = vi_mode_normal;
+    strbuf_clear(reg);
+    return lines_collect_range(&filebuf->lines, range, reg) ? vi_ok : vi_fail;
+}
+
+static enum vi_status erase_range(struct filebuf *filebuf, struct vi_state *state, struct registers *registers) {
+    struct strbuf *reg = register_get(registers, consume_regname(state));
+    struct range range = range_new(state->select_start, state->cursor);
+    state->cursor = state->select_start;
+    state->mode = vi_mode_normal;
+    strbuf_clear(reg);
+    return lines_collect_range(&filebuf->lines, range, reg) && lines_erase_range(&filebuf->lines, range) ? vi_ok : vi_fail;
+}
+
+static enum vi_status handle_key_select(struct filebuf *filebuf, struct vi_state *state, struct registers *registers, int key) {
+    switch (key) {
+    case NEX_KEY_ESCAPE:
+        state->mode = vi_mode_normal;
+        return vi_ok;
+    case 'y':
+        return yank_range(filebuf, state, registers);
+    case 'd': case 'x':
+        return erase_range(filebuf, state, registers);
+    }
+    return handle_key_normal(filebuf, state, registers, key);
 }
 
 static enum vi_status handle_key_cmdline(struct filebuf *filebuf, struct vi_state *state, struct registers *registers, int key) {
@@ -200,6 +242,7 @@ enum vi_status vi_handle_key(struct filebuf *filebuf, struct vi_state *state, st
     switch (state->mode) {
     case vi_mode_normal: return handle_key_normal(filebuf, state, registers, key);
     case vi_mode_insert: return handle_key_insert(filebuf, state, key);
+    case vi_mode_select: return handle_key_select(filebuf, state, registers, key);
     case vi_mode_cmdline: return handle_key_cmdline(filebuf, state, registers, key);
     case vi_mode_register_pending: return handle_key_register(state, registers, key);
     default: die("unhandled mode");
@@ -208,7 +251,8 @@ enum vi_status vi_handle_key(struct filebuf *filebuf, struct vi_state *state, st
 
 struct vi_state vi_state_new(void) {
     return (struct vi_state) {
-        .cursor = (struct vi_cursor) { .x = 0, .y = 0 },
+        .select_start = (struct position) { .x = 0, .y = 0 },
+        .cursor = (struct position) { .x = 0, .y = 0 },
         .frame = (struct vi_frame) { .top = 0, .left = 0 },
         .mode = vi_mode_normal,
         .count = 0,
@@ -220,7 +264,8 @@ const char *vi_mode_describe(enum vi_mode mode) {
     switch (mode) {
     case vi_mode_normal:           return "Normal";
     case vi_mode_insert:           return "Insert";
-    case vi_mode_cmdline:          return "Cmdline";
+    case vi_mode_select:           return "Select";
+    case vi_mode_cmdline:          return "Command line";
     case vi_mode_register_pending: return "Register pending";
     default:                       return "Unknown";
     }

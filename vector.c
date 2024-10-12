@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static size_t vector_grow_capacity(size_t capacity) {
+NEX_CONST static size_t vector_grow_capacity(size_t capacity) {
     return capacity == 0 ? 8 : min_uz(capacity * 2, capacity + 1028);
 }
 
@@ -73,13 +73,19 @@ bool vector_push(struct vector *vector, const void *bytes) {
 }
 
 bool vector_pop(struct vector *vector) {
-    if (vector->len == 0) {
+    return vector_pop_n(vector, 1);
+}
+
+bool vector_pop_n(struct vector *vector, size_t n) {
+    if (vector->len < n) {
         return false;
     }
-    --vector->len;
     if (vector->destroy_elem != NULL) {
-        vector->destroy_elem(vector_at_unchecked(vector, vector->len));
+        for (size_t i = vector->len - n - 1; i != vector->len; ++i) {
+            vector->destroy_elem(vector_at_unchecked(vector, i));
+        }
     }
+    vector->len -= n;
     return true;
 }
 
@@ -94,25 +100,31 @@ bool vector_insert(struct vector *vector, size_t index, const void *bytes) {
     memmove(
         vector_at_unchecked(vector, index + 1),
         vector_at_unchecked(vector, index),
-        (vector->len - 1 - index) * vector->elem_size);
+        (vector->len - index - 1) * vector->elem_size);
     memcpy(vector_at_unchecked(vector, index), bytes, vector->elem_size);
     return true;
 }
 
 bool vector_erase(struct vector *vector, size_t index) {
-    if (index >= vector->len) {
+    return vector_erase_n(vector, index, 1);
+}
+
+bool vector_erase_n(struct vector *vector, size_t index, size_t n) {
+    if (index + n >= vector->len) {
         return false;
     }
-    if (index == vector->len - 1) {
-        return vector_pop(vector);
+    if (index == vector->len - n) {
+        return vector_pop_n(vector, n);
     }
     if (vector->destroy_elem != NULL) {
-        vector->destroy_elem(vector_at_unchecked(vector, index));
+        for (size_t i = 0; i != n; ++i) {
+            vector->destroy_elem(vector_at_unchecked(vector, index + i));
+        }
     }
     memmove(
         vector_at_unchecked(vector, index),
-        vector_at_unchecked(vector, index + 1),
-        (vector->len - index) * vector->elem_size);
-    --vector->len;
+        vector_at_unchecked(vector, index + n),
+        (vector->len - index - n) * vector->elem_size);
+    vector->len -= n;
     return true;
 }

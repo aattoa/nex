@@ -2,7 +2,6 @@
 #include "editor.h"
 #include "terminal.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -108,7 +107,11 @@ static void handle_vi(struct editor *editor) {
     if (editor->settings.ruler) {
         terminal_print("%zu,%zu ", editor->vi_state.cursor.y + 1, editor->vi_state.cursor.x + 1);
     }
-    terminal_print("count: %zu, status: %s", editor->vi_state.count, stror(editor->message.ptr, "none"));
+    terminal_print(
+        "count: %zu, reg: %i, status: %s",
+        editor->vi_state.count,
+        (int)editor->vi_state.regname,
+        stror(editor->message.ptr, "none"));
     terminal_set_cursor((struct termpos) {
         .x = editor->vi_state.cursor.x + 2 - editor->vi_state.frame.left + number_width,
         .y = editor->vi_state.cursor.y + 1 - editor->vi_state.frame.top,

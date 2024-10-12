@@ -2,9 +2,11 @@
 #define NEX_UTIL_H
 
 #include <assert.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #ifdef __GNUC__

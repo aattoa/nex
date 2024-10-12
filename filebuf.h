@@ -5,6 +5,14 @@
 #include "vector.h"
 #include <stdio.h>
 
+struct position {
+    size_t x, y;
+};
+
+struct range {
+    struct position begin, end;
+};
+
 struct filebuf {
     struct vector lines; // Element: `struct strbuf`
     struct strbuf path;
@@ -37,6 +45,18 @@ enum filebuf_status lines_read(struct vector *lines, const char *path) NEX_NONNU
 enum filebuf_status lines_write_stream(struct vector lines, FILE *stream) NEX_NONNULL;
 
 enum filebuf_status lines_write(struct vector lines, const char *path) NEX_NONNULL;
+
+bool lines_split_line(struct vector *lines, struct position position) NEX_NONNULL;
+
+bool lines_collect_range(struct vector *lines, struct range range, struct strbuf *output) NEX_NONNULL;
+
+bool lines_erase_range(struct vector *lines, struct range range) NEX_NONNULL;
+
+bool lines_insert(struct vector *lines, struct position position, struct view view) NEX_NONNULL;
+
+bool position_less_than(struct position left, struct position right) NEX_CONST;
+
+struct range range_new(struct position a, struct position b) NEX_CONST;
 
 const char *filebuf_status_describe(enum filebuf_status status) NEX_CONST;
 

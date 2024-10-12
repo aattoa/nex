@@ -2,8 +2,6 @@
 #define NEX_TERMINAL_H
 
 #include "util.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 struct termpos {
     int16_t x, y;

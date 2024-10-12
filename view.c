@@ -90,3 +90,32 @@ struct view view_subview(struct view view, size_t offset, size_t length) {
     view.len = min_uz(view.len, length);
     return view;
 }
+
+size_t view_find(struct view view, char byte) {
+    for (size_t i = 0; i != view.len; ++i) {
+        if (view.ptr[i] == byte) {
+            return i;
+        }
+    }
+    return SIZE_MAX;
+}
+
+bool view_split(struct view view, struct view *restrict left, struct view *restrict right, size_t offset) {
+    if (view.len < offset) {
+        return false;
+    }
+    *left = *right = view;
+    view_remove_suffix_unchecked(left, view.len - offset);
+    view_remove_prefix_unchecked(right, offset);
+    return true;
+}
+
+bool view_split_char(struct view view, struct view *restrict left, struct view *restrict right, char byte) {
+    size_t offset = view_find(view, byte);
+    if (offset == SIZE_MAX) {
+        return false;
+    }
+    view_split(view, left, right, offset);
+    view_remove_prefix_unchecked(right, 1);
+    return true;
+}

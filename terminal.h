@@ -4,11 +4,11 @@
 #include "util.h"
 
 struct termpos {
-    int16_t x, y;
+    uint16_t x, y;
 };
 
 struct termsize {
-    int16_t width, height;
+    uint16_t width, height;
 };
 
 int terminal_read_input(void) NEX_NODISCARD;

@@ -5,15 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void show_usage(void) {
-    puts("Usage: nex [options] [file ...]"
-        "\nOptions:"
-        "\n\t-h, --help    \tDisplay help information"
-        "\n\t-v, --version \tDisplay version information"
-        "\n\t    --visual  \tStart in visual mode"
-        "\n\t--            \tTreat remaining arguments as filenames");
-}
-
 static void process_arguments(struct editor *editor, const char **begin, const char **end) {
     bool handle_flags = true;
     for (const char **arg = begin; arg != end; ++arg) {
@@ -22,13 +13,30 @@ static void process_arguments(struct editor *editor, const char **begin, const c
                 handle_flags = false;
             }
             else if (streq(*arg, "-h") || streq(*arg, "--help")) {
-                show_usage();
+                puts("Usage: nex [options] [file ...]"
+                    "\nOptions:"
+                    "\n  -h, --help     \tDisplay help information"
+                    "\n  -v, --version  \tDisplay version information"
+                    "\n      --visual   \tStart in visual mode"
+                    "\n      --dims WxH \tUse width=W and height=H");
+                exit(EXIT_SUCCESS);
             }
             else if (streq(*arg, "-v") || streq(*arg, "--version")) {
                 puts("nex 0.0.1");
+                exit(EXIT_SUCCESS);
             }
             else if (streq(*arg, "--visual")) {
                 editor->mode = editor_mode_vi;
+            }
+            else if (streq(*arg, "--dims")) {
+                if (++arg == end) {
+                    die("missing dims argument\n");
+                }
+                size_t w, h;
+                if (sscanf(*arg, "%zux%zu", &w, &h) != 2 || w > UINT16_MAX || h > UINT16_MAX) {
+                    die("invalid dims argument\n");
+                }
+                editor->size = (struct termsize) { .width = w, .height = h };
             }
             else {
                 fprintf(stderr, "Unrecognized option '%s'\n", *arg);
@@ -57,7 +65,7 @@ static void handle_cmdline(struct editor *editor) {
 
 static void handle_editline(struct editor *editor) {
     if (editor->editline == NULL) {
-        die("null editline");
+        die("null editline\n");
     }
     struct view line = view_subview(strbuf_view(*editor->editline), editor->editline_state.leftmost_column, editor->size.width);
     terminal_print(
@@ -79,9 +87,9 @@ static void handle_editline(struct editor *editor) {
 static void handle_vi(struct editor *editor) {
     struct filebuf *filebuf = editor_current_filebuf(editor);
     if (filebuf == NULL) {
-        die("null visual filebuf");
+        die("null visual filebuf\n");
     }
-    size_t number_width = digit_count(editor->vi_state.frame.top + editor->size.height - 1);
+    size_t number_width = editor->settings.number ? digit_count(editor->vi_state.frame.top + editor->size.height - 1) : 0;
     size_t top = editor->vi_state.frame.top;
     size_t bottom = min_uz(filebuf->lines.len, top + editor->size.height) - 1;
     assert(top < bottom);
@@ -89,13 +97,12 @@ static void handle_vi(struct editor *editor) {
     for (size_t i = top; i != bottom; ++i) {
         struct strbuf *strbuf = vector_at(&filebuf->lines, i);
         struct view line = view_subview(strbuf_view(*strbuf), editor->vi_state.frame.left, editor->size.width);
-        terminal_print(
-            "%s%*zu %.*s\n",
-            TERMINAL_CLEAR_LINE,
-            (int)number_width,
-            i + 1,
-            (int)min_uz(line.len, saturating_sub(editor->size.width, number_width + 1)),
-            stror(line.ptr, ""));
+        terminal_print("%s", TERMINAL_CLEAR_LINE);
+        if (editor->settings.number) {
+            terminal_print("%*zu ", (int)number_width, i + 1);
+        }
+        size_t display_line_width = min_uz(line.len, sat_sub_uz(editor->size.width, number_width + 1));
+        terminal_print("%.*s\n", (int)display_line_width, stror(line.ptr, ""));
     }
     for (size_t i = bottom + 1; i < top + editor->size.height; ++i) {
         terminal_print("%s~\n", TERMINAL_CLEAR_LINE);
@@ -113,7 +120,7 @@ static void handle_vi(struct editor *editor) {
         (int)editor->vi_state.regname,
         stror(editor->message.ptr, "none"));
     terminal_set_cursor((struct termpos) {
-        .x = editor->vi_state.cursor.x + 2 - editor->vi_state.frame.left + number_width,
+        .x = editor->vi_state.cursor.x + 1 - editor->vi_state.frame.left + number_width + (editor->settings.number ? 1 : 0),
         .y = editor->vi_state.cursor.y + 1 - editor->vi_state.frame.top,
     });
     terminal_flush();
@@ -169,7 +176,7 @@ int main(int argc, const char **argv) {
                 editor.settings.scrolloff);
         }
         else {
-            die("unhandled mode");
+            die("unhandled mode\n");
         }
     }
 

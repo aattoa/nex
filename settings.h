@@ -8,6 +8,7 @@ struct nex_settings {
     size_t sidescrolloff;
     bool showmode;
     bool ruler;
+    bool number;
 };
 
 struct nex_settings nex_settings_new(void) NEX_CONST;

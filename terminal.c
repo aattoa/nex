@@ -13,7 +13,7 @@
 
 static void require(bool condition, const char *message) {
     if (!condition) {
-        die("%s: %s", message, strerror(errno));
+        die("%s: %s\n", message, strerror(errno));
     }
 }
 
@@ -55,23 +55,14 @@ int terminal_read_input(void) {
     else if (!terminal_read_byte(&byte)) {
         return NEX_KEY_NONE;
     }
-    if (byte == 033) {
-        if (terminal_poll()) {
-            char csi;
-            if (terminal_read_byte(&csi)) {
-                if (csi == '[') {
-                    return terminal_extract_control_sequence();
-                }
-                previous_false_csi_byte = csi;
+    if (byte == 033 && terminal_poll()) {
+        char csi;
+        if (terminal_read_byte(&csi)) {
+            if (csi == '[') {
+                return terminal_extract_control_sequence();
             }
+            previous_false_csi_byte = csi;
         }
-        return NEX_KEY_ESCAPE;
-    }
-    else if (byte == 13) {
-        return NEX_KEY_ENTER;
-    }
-    else if (byte == 127) {
-        return NEX_KEY_BACKSPACE;
     }
     return byte;
 }

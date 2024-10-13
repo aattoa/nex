@@ -1,6 +1,10 @@
 #include "editor.h"
 #include "editline.h"
 
+static struct termsize validate_size(struct termsize size) {
+    return (struct termsize) { .width = max_u16(size.width, 6), .height = max_u16(size.height, 2) };
+}
+
 struct editor editor_new(struct termsize size) {
     return (struct editor) {
         .registers = registers_new(),
@@ -10,7 +14,7 @@ struct editor editor_new(struct termsize size) {
         .editline = NULL,
         .cmdline_state = editline_state_new(),
         .editline_state = editline_state_new(),
-        .size = size,
+        .size = validate_size(size),
         .settings = nex_settings_new(),
         .mode = editor_mode_cmdline,
         .focus = 0,

@@ -133,7 +133,7 @@ bool lines_collect_range(struct vector *lines, struct range range, struct strbuf
     if (first_line == NULL || range.begin.y > range.end.y) {
         return false;
     }
-    strbuf_push_view(output, view_subview(strbuf_view(*first_line), range.begin.x, saturating_sub(first_line->len, range.begin.x)));
+    strbuf_push_view(output, view_subview(strbuf_view(*first_line), range.begin.x, sat_sub_uz(first_line->len, range.begin.x)));
     for (size_t i = range.begin.y + 1; i < range.end.y; ++i) {
         struct strbuf *line = vector_at(lines, i);
         if (line == NULL || !strbuf_push(output, '\n') || !strbuf_push_view(output, strbuf_view(*line))) {

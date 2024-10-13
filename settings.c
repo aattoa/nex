@@ -6,5 +6,6 @@ struct nex_settings nex_settings_new(void) {
         .sidescrolloff = 0,
         .showmode = true,
         .ruler = true,
+        .number = true,
     };
 }

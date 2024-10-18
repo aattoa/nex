@@ -1,5 +1,5 @@
 #include "editor.h"
-#include "editline.h"
+#include "visual.h"
 #include <stdlib.h>
 
 static struct termsize validate_size(struct termsize size) {
@@ -9,27 +9,25 @@ static struct termsize validate_size(struct termsize size) {
 struct editor editor_new(struct termsize size) {
     return (struct editor) {
         .registers = registers_new(),
-        .cmdline_history = filebuf_new(),
         .filebufs = vector_new(sizeof(struct filebuf), filebuf_destroy),
         .message = strbuf_new(),
-        .cmdline = strbuf_new(),
-        .editline = NULL,
-        .cmdline_state = editline_state_new(),
-        .editline_state = editline_state_new(),
+        .cmdline_filebuf = filebuf_new(),
+        .editline_filebuf = NULL,
+        .cmdline_state = vi_state_new(vi_context_line),
+        .editline_state = vi_state_new(vi_context_line),
+        .vi_state = vi_state_new(vi_context_file),
         .size = validate_size(size),
         .settings = nex_settings_new(),
         .mode = editor_mode_cmdline,
         .focus = 0,
-        .line_index = 0,
     };
 }
 
 void editor_free(struct editor *editor) {
+    filebuf_free(&editor->cmdline_filebuf);
     registers_free(&editor->registers);
-    filebuf_free(&editor->cmdline_history);
     vector_free(&editor->filebufs);
     strbuf_free(&editor->message);
-    strbuf_free(&editor->cmdline);
     *editor = editor_new(editor->size);
 }
 
@@ -71,18 +69,18 @@ struct filebuf *editor_current_filebuf(struct editor *editor) {
     return vector_at(&editor->filebufs, editor->focus);
 }
 
-struct strbuf *editor_current_line(struct editor *editor) {
+struct strbuf *editor_current_editline(struct editor *editor) {
     struct filebuf *filebuf = editor_current_filebuf(editor);
     if (filebuf == NULL) {
         editor_print_message(editor, "No file focused");
         return NULL;
     }
-    return vector_at(&filebuf->lines, editor->line_index);
+    return vi_current_line(filebuf, &editor->editline_state);
 }
 
 bool editor_set_focus(struct editor *editor, size_t focus) {
     if (focus < editor->filebufs.len) {
-        editor->line_index = 0;
+        editor->editline_state = vi_state_new(vi_context_line);
         editor->focus = focus;
         editor_show_filename(editor);
         return true;
@@ -110,27 +108,27 @@ bool editor_show_filename(struct editor *editor) {
 }
 
 bool editor_handle_key_cmdline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(&editor->cmdline, &editor->cmdline_state, &editor->cmdline_history, key);
-    if (status == editline_accept) {
-        struct view command = strbuf_view(editor->cmdline);
-        editor_history_add(&editor->cmdline_history, command);
-        bool result = editor_execute_command(editor, command);
-        strbuf_clear(&editor->cmdline);
-        editor->cmdline_state = editline_state_new();
-        editor->cmdline_state.history_index = editor->cmdline_history.lines.len;
-        return result;
+    enum vi_status status = vi_handle_key(&editor->cmdline_filebuf, &editor->cmdline_state, &editor->registers, key);
+    if (status == vi_line_accept) {
+        struct view command = strbuf_view(*vi_current_line(&editor->cmdline_filebuf, &editor->cmdline_state));
+        editor_cmdline_history_append(editor, command);
+        editor->cmdline_state.cursor = (struct position) { .x = 0, .y = editor->cmdline_filebuf.lines.len };
+        struct strbuf new_line = strbuf_new();
+        return vector_push(&editor->cmdline_filebuf.lines, &new_line)
+            && editor_execute_command(editor, command);
     }
-    return status == editline_ok;
+    return status == vi_ok;
 }
 
 bool editor_handle_key_editline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(editor->editline, &editor->editline_state, NULL, key);
-    if (status == editline_accept) {
-        editor->editline_state = editline_state_new();
+    assert(editor->editline_filebuf != NULL);
+    enum vi_status status = vi_handle_key(editor->editline_filebuf, &editor->editline_state, &editor->registers, key);
+    if (status == vi_line_accept) {
+        editor->editline_state = vi_state_new(vi_context_line);
         editor->mode = editor_mode_cmdline;
         return true;
     }
-    return status == editline_ok;
+    return status == vi_ok;
 }
 
 bool editor_handle_key_vi(struct editor *editor, int key) {
@@ -140,7 +138,7 @@ bool editor_handle_key_vi(struct editor *editor, int key) {
     }
     enum vi_status status = vi_handle_key(filebuf, &editor->vi_state, &editor->registers, key);
     if (status == vi_leave) {
-        editor->vi_state = vi_state_new();
+        editor->vi_state = vi_state_new(vi_context_file);
         editor->mode = editor_mode_cmdline;
         return true;
     }
@@ -166,22 +164,21 @@ void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t
 #undef first
 }
 
-void editor_history_add(struct filebuf *history, struct view entry) {
-    if (entry.len == 0) {
+void editor_initialize_cmdline(struct editor *editor) {
+    editor->cmdline_filebuf.path = editor_history_path();
+    filebuf_read(&editor->cmdline_filebuf);
+    editor->cmdline_state.cursor = (struct position) { .x = 0, .y = editor->cmdline_filebuf.lines.len };
+    struct strbuf new_line = strbuf_new();
+    if (!vector_push(&editor->cmdline_filebuf.lines, &new_line)) {
+        die("Could not allocate cmdline\n");
+    }
+}
+
+void editor_cmdline_history_append(struct editor *editor, struct view entry) {
+    if (entry.len == 0 || editor->cmdline_filebuf.path.len == 0) {
         return;
     }
-    struct strbuf copy = strbuf_new();
-    if (!strbuf_push_view(&copy, entry)) {
-        return;
-    }
-    if (!vector_push(&history->lines, &copy)) {
-        strbuf_free(&copy);
-        return;
-    }
-    if (history->path.len == 0) {
-        return;
-    }
-    FILE *stream = fopen(history->path.ptr, "a");
+    FILE *stream = fopen(editor->cmdline_filebuf.path.ptr, "a");
     if (stream == NULL) {
         return;
     }

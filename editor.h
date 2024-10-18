@@ -5,9 +5,8 @@
 #include "filebuf.h"
 #include "terminal.h"
 #include "settings.h"
-#include "editline.h"
-#include "visual.h"
 #include "registers.h"
+#include "visual.h"
 
 enum editor_mode {
     editor_mode_quit,
@@ -18,19 +17,17 @@ enum editor_mode {
 
 struct editor {
     struct registers registers;
-    struct filebuf cmdline_history;
     struct vector filebufs; // Element: `struct filebuf`
     struct strbuf message;
-    struct strbuf cmdline;
-    struct strbuf *editline;
-    struct editline_state cmdline_state;
-    struct editline_state editline_state;
+    struct filebuf cmdline_filebuf;
+    struct filebuf *editline_filebuf;
+    struct vi_state cmdline_state;
+    struct vi_state editline_state;
     struct vi_state vi_state;
     struct termsize size;
     struct nex_settings settings;
     enum editor_mode mode;
     size_t focus;
-    size_t line_index;
 };
 
 struct editor editor_new(struct termsize size) NEX_CONST;
@@ -45,7 +42,7 @@ enum filebuf_status editor_write_current_filebuf(struct editor *editor) NEX_NONN
 
 struct filebuf *editor_current_filebuf(struct editor *editor) NEX_NONNULL NEX_NODISCARD;
 
-struct strbuf *editor_current_line(struct editor *editor) NEX_NONNULL NEX_NODISCARD;
+struct strbuf *editor_current_editline(struct editor *editor) NEX_NONNULL NEX_NODISCARD;
 
 bool editor_set_focus(struct editor *editor, size_t focus) NEX_NONNULL;
 
@@ -61,9 +58,11 @@ bool editor_handle_key_editline(struct editor *editor, int key) NEX_NONNULL;
 
 bool editor_handle_key_vi(struct editor *editor, int key) NEX_NONNULL;
 
-void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff);
+void editor_initialize_cmdline(struct editor *editor) NEX_NONNULL;
 
-void editor_history_add(struct filebuf *history, struct view entry) NEX_NONNULL;
+void editor_cmdline_history_append(struct editor *editor, struct view entry) NEX_NONNULL;
+
+void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff);
 
 struct strbuf editor_history_path(void) NEX_NODISCARD;
 

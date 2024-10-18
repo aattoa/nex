@@ -142,17 +142,18 @@ bool strbuf_erase(struct strbuf *strbuf, size_t index) {
 }
 
 bool strbuf_erase_n(struct strbuf *strbuf, size_t index, size_t n) {
-    if (index + n >= strbuf->len) {
-        return false;
-    }
-    if (index == strbuf->len - n) {
+    if (sat_add_uz(index, n) == strbuf->len) {
         return strbuf_pop_n(strbuf, n);
+    }
+    if (sat_add_uz(index, n) > strbuf->len) {
+        return false;
     }
     memmove(
         strbuf->ptr + index,
         strbuf->ptr + index + n,
-        strbuf->len - index - n + 1);
+        strbuf->len - index - n);
     strbuf->len -= n;
+    strbuf->ptr[strbuf->len] = 0;
     return true;
 }
 

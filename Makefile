@@ -3,7 +3,7 @@ MAKEFLAGS += --jobs=8
 CSANITIZE = -fsanitize=undefined -fsanitize=address
 CFLAGS    = -std=c99 -Wall -Wextra -Wpedantic -Werror -g -Os
 
-SOURCES = main.c editor.c cmdline.c editline.c visual.c registers.c settings.c terminal.c filebuf.c vector.c strbuf.c view.c util.c
+SOURCES = main.c editor.c cmdline.c visual.c registers.c settings.c terminal.c filebuf.c vector.c strbuf.c view.c util.c
 OBJECTS = ${SOURCES:.c=.o}
 BINARY  = nex
 

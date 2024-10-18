@@ -9,30 +9,20 @@ static bool cmdline_write(struct editor *editor) {
     return false;
 }
 
-static bool cmdline_set_line_index(struct editor *editor, size_t line) {
-    struct filebuf *filebuf = editor_current_filebuf(editor);
-    if (filebuf != NULL && line < filebuf->lines.len) {
-        editor->line_index = line;
-        return true;
-    }
-    return false;
-}
-
 static bool cmdline_edit_line(struct editor *editor) {
-    struct strbuf *line = editor_current_line(editor);
-    if (line != NULL) {
-        editor->editline = line;
-        editor->editline_state = editline_state_new();
-        editor->mode = editor_mode_editline;
-        return true;
+    editor->editline_filebuf = editor_current_filebuf(editor);
+    if (editor->editline_filebuf == NULL) {
+        editor_print_message(editor, "No file to edit");
+        return false;
     }
-    editor_print_message(editor, "Line number %zu is out of range", editor->line_index + 1);
-    return false;
+    editor->editline_state = vi_state_new(vi_context_line);
+    editor->mode = editor_mode_editline;
+    return true;
 }
 
 static bool cmdline_visual(struct editor *editor) {
     if (editor_current_filebuf(editor) != NULL) {
-        editor->vi_state = vi_state_new();
+        editor->vi_state = vi_state_new(vi_context_file);
         editor->mode = editor_mode_vi;
         return true;
     }
@@ -63,12 +53,6 @@ bool editor_execute_command(struct editor *editor, struct view cmd) {
     }
     if (view_deep_equal(cmd, view_from("b")) || view_deep_equal(cmd, view_from("back"))) {
         return editor_set_focus(editor, editor->focus - 1);
-    }
-    if (view_deep_equal(cmd, view_from("j"))) {
-        return cmdline_set_line_index(editor, editor->line_index + 1);
-    }
-    if (view_deep_equal(cmd, view_from("k"))) {
-        return cmdline_set_line_index(editor, editor->line_index - 1);
     }
     editor_print_message(editor, "Unrecognized command: %.*s", (int)cmd.len, cmd.ptr);
     return false;

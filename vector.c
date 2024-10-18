@@ -110,11 +110,11 @@ bool vector_erase(struct vector *vector, size_t index) {
 }
 
 bool vector_erase_n(struct vector *vector, size_t index, size_t n) {
-    if (index + n >= vector->len) {
-        return false;
-    }
-    if (index == vector->len - n) {
+    if (sat_add_uz(index, n) == vector->len) {
         return vector_pop_n(vector, n);
+    }
+    if (sat_add_uz(index, n) > vector->len) {
+        return false;
     }
     if (vector->destroy_elem != NULL) {
         for (size_t i = 0; i != n; ++i) {

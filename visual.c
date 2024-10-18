@@ -19,16 +19,8 @@ static char consume_regname(struct vi_state *state) {
     return name != 0 ? name : REGISTER_UNNAMED;
 }
 
-static struct strbuf *current_line(struct filebuf *filebuf, struct vi_state *state) {
-    struct strbuf *line = vector_at(&filebuf->lines, state->cursor.y);
-    if (line == NULL) {
-        die("cursor.y out of range\n");
-    }
-    return line;
-}
-
 static void clamp_cursor_x(struct filebuf *filebuf, struct vi_state *state, enum virtualedit virtualedit) {
-    struct strbuf *line = current_line(filebuf, state);
+    struct strbuf *line = vi_current_line(filebuf, state);
     if (virtualedit == virtualedit_none) {
         state->cursor.x = min_uz(state->cursor.x, sat_sub_uz(line->len, 1));
     }
@@ -46,7 +38,7 @@ static enum vi_status cursor_left(struct vi_state *state) {
 }
 
 static enum vi_status cursor_right(struct filebuf *filebuf, struct vi_state *state, enum virtualedit virtualedit) {
-    struct strbuf *line = current_line(filebuf, state);
+    struct strbuf *line = vi_current_line(filebuf, state);
     if (state->cursor.x < line->len) {
         state->cursor.x += consume_count(state);
         clamp_cursor_x(filebuf, state, virtualedit);
@@ -74,7 +66,7 @@ static enum vi_status cursor_down(struct filebuf *filebuf, struct vi_state *stat
 }
 
 static enum vi_status backspace(struct filebuf *filebuf, struct vi_state *state) {
-    if (strbuf_erase(current_line(filebuf, state), state->cursor.x - 1)) {
+    if (strbuf_erase(vi_current_line(filebuf, state), state->cursor.x - 1)) {
         --state->cursor.x;
         return vi_ok;
     }
@@ -82,7 +74,7 @@ static enum vi_status backspace(struct filebuf *filebuf, struct vi_state *state)
 }
 
 static enum vi_status erase(struct filebuf *filebuf, struct vi_state *state, struct registers *registers) {
-    struct strbuf *line = current_line(filebuf, state);
+    struct strbuf *line = vi_current_line(filebuf, state);
     if (line->len == 0) {
         return vi_fail;
     }
@@ -131,7 +123,7 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
     case 'l': case NEX_KEY_RIGHT:
         return cursor_right(filebuf, state, virtualedit_none);
     case '$':
-        state->cursor.x = sat_sub_uz(current_line(filebuf, state)->len, 1);
+        state->cursor.x = sat_sub_uz(vi_current_line(filebuf, state)->len, 1);
         return vi_ok;
     case 'i':
         return start_insert(state);
@@ -142,7 +134,7 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
         ++state->cursor.x;
         return start_insert(state);
     case 'A':
-        state->cursor.x = current_line(filebuf, state)->len;
+        state->cursor.x = vi_current_line(filebuf, state)->len;
         return start_insert(state);
     case 'o':
         cursor_down(filebuf, state, virtualedit_one); // fallthrough
@@ -178,7 +170,7 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
 }
 
 static enum vi_status insert(struct filebuf *filebuf, struct vi_state *state, int key) {
-    if (strbuf_insert(current_line(filebuf, state), state->cursor.x, key)) {
+    if (strbuf_insert(vi_current_line(filebuf, state), state->cursor.x, key)) {
         ++state->cursor.x;
         return vi_ok;
     }
@@ -186,6 +178,9 @@ static enum vi_status insert(struct filebuf *filebuf, struct vi_state *state, in
 }
 
 static enum vi_status enter(struct filebuf *filebuf, struct vi_state *state) {
+    if (state->context == vi_context_line) {
+        return vi_line_accept;
+    }
     if (!lines_split_line(&filebuf->lines, state->cursor)) {
         return vi_fail;
     }
@@ -280,12 +275,21 @@ enum vi_status vi_handle_key(struct filebuf *filebuf, struct vi_state *state, st
     }
 }
 
-struct vi_state vi_state_new(void) {
+struct strbuf *vi_current_line(struct filebuf *filebuf, struct vi_state *state) {
+    struct strbuf *line = vector_at(&filebuf->lines, state->cursor.y);
+    if (line == NULL) {
+        die("cursor out of range: lines:%zu, cursor.y:%zu\n", filebuf->lines.len, state->cursor.y);
+    }
+    return line;
+}
+
+struct vi_state vi_state_new(enum vi_context context) {
     return (struct vi_state) {
         .select_start = (struct position) { .x = 0, .y = 0 },
         .cursor = (struct position) { .x = 0, .y = 0 },
         .frame = (struct vi_frame) { .top = 0, .left = 0 },
-        .mode = vi_mode_normal,
+        .mode = context == vi_context_file ? vi_mode_normal : vi_mode_insert,
+        .context = context,
         .count = 0,
         .regname = 0,
     };

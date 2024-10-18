@@ -53,11 +53,12 @@ static void process_arguments(struct editor *editor, const char **begin, const c
 
 static void handle_cmdline(struct editor *editor) {
     terminal_print(
-        "%s%s:%s\nstatus: %s",
+        "%s%s:%s\nstatus: %s, history index: %zu",
         TERMINAL_RESET_CURSOR,
         TERMINAL_CLEAR,
         stror(editor->cmdline.ptr, ""),
-        stror(editor->message.ptr, "none"));
+        stror(editor->message.ptr, "none"),
+        editor->editline_state.history_index);
     terminal_set_cursor((struct termpos) { .x = editor->cmdline_state.cursor + 2, .y = 1 });
     terminal_flush();
     editor_handle_key_cmdline(editor, terminal_read_input());
@@ -140,6 +141,10 @@ static void terminal_stop(void) {
 int main(int argc, const char **argv) {
     struct editor editor = editor_new(terminal_get_size());
     process_arguments(&editor, argv + 1, argv + argc);
+
+    editor.cmdline_history.path = editor_history_path();
+    filebuf_read(&editor.cmdline_history);
+    editor.cmdline_state.history_index = editor.cmdline_history.lines.len;
 
     // Enable full output buffering.
     setvbuf(stdout, NULL, _IOFBF, BUFSIZ);

@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "editline.h"
+#include <stdlib.h>
 
 static struct termsize validate_size(struct termsize size) {
     return (struct termsize) { .width = max_u16(size.width, 6), .height = max_u16(size.height, 2) };
@@ -8,6 +9,7 @@ static struct termsize validate_size(struct termsize size) {
 struct editor editor_new(struct termsize size) {
     return (struct editor) {
         .registers = registers_new(),
+        .cmdline_history = filebuf_new(),
         .filebufs = vector_new(sizeof(struct filebuf), filebuf_destroy),
         .message = strbuf_new(),
         .cmdline = strbuf_new(),
@@ -24,6 +26,7 @@ struct editor editor_new(struct termsize size) {
 
 void editor_free(struct editor *editor) {
     registers_free(&editor->registers);
+    filebuf_free(&editor->cmdline_history);
     vector_free(&editor->filebufs);
     strbuf_free(&editor->message);
     strbuf_free(&editor->cmdline);
@@ -107,18 +110,21 @@ bool editor_show_filename(struct editor *editor) {
 }
 
 bool editor_handle_key_cmdline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(&editor->cmdline, &editor->cmdline_state, key);
+    enum editline_status status = editline_handle_key(&editor->cmdline, &editor->cmdline_state, &editor->cmdline_history, key);
     if (status == editline_accept) {
-        bool result = editor_execute_command(editor, strbuf_view(editor->cmdline));
+        struct view command = strbuf_view(editor->cmdline);
+        editor_history_add(&editor->cmdline_history, command);
+        bool result = editor_execute_command(editor, command);
         strbuf_clear(&editor->cmdline);
         editor->cmdline_state = editline_state_new();
+        editor->cmdline_state.history_index = editor->cmdline_history.lines.len;
         return result;
     }
     return status == editline_ok;
 }
 
 bool editor_handle_key_editline(struct editor *editor, int key) {
-    enum editline_status status = editline_handle_key(editor->editline, &editor->editline_state, key);
+    enum editline_status status = editline_handle_key(editor->editline, &editor->editline_state, NULL, key);
     if (status == editline_accept) {
         editor->editline_state = editline_state_new();
         editor->mode = editor_mode_cmdline;
@@ -158,4 +164,52 @@ void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t
     }
 #undef last
 #undef first
+}
+
+void editor_history_add(struct filebuf *history, struct view entry) {
+    if (entry.len == 0) {
+        return;
+    }
+    struct strbuf copy = strbuf_new();
+    if (!strbuf_push_view(&copy, entry)) {
+        return;
+    }
+    if (!vector_push(&history->lines, &copy)) {
+        strbuf_free(&copy);
+        return;
+    }
+    if (history->path.len == 0) {
+        return;
+    }
+    FILE *stream = fopen(history->path.ptr, "a");
+    if (stream == NULL) {
+        return;
+    }
+    fprintf(stream, "%.*s\n", (int)entry.len, entry.ptr);
+    fclose(stream);
+}
+
+struct strbuf editor_history_path(void) {
+    // https://specifications.freedesktop.org/basedir-spec/latest/
+
+    struct strbuf path = strbuf_new();
+    const char *var;
+    if ((var = getenv("NEX_HISTORY"))) {
+        strbuf_push_view(&path, view_from(var));
+    }
+    else if ((var = getenv("XDG_STATE_HOME"))) {
+        if (strbuf_push_view(&path, view_from(var))) {
+            if (!strbuf_push_view(&path, view_from("/nex_history"))) {
+                strbuf_free(&path);
+            }
+        }
+    }
+    else if ((var = getenv("HOME"))) {
+        if (strbuf_push_view(&path, view_from(var))) {
+            if (!strbuf_push_view(&path, view_from("/.local/state/nex_history"))) {
+                strbuf_free(&path);
+            }
+        }
+    }
+    return path;
 }

@@ -18,6 +18,7 @@ enum editor_mode {
 
 struct editor {
     struct registers registers;
+    struct filebuf cmdline_history;
     struct vector filebufs; // Element: `struct filebuf`
     struct strbuf message;
     struct strbuf cmdline;
@@ -61,5 +62,9 @@ bool editor_handle_key_editline(struct editor *editor, int key) NEX_NONNULL;
 bool editor_handle_key_vi(struct editor *editor, int key) NEX_NONNULL;
 
 void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t scrolloff);
+
+void editor_history_add(struct filebuf *history, struct view entry) NEX_NONNULL;
+
+struct strbuf editor_history_path(void) NEX_NODISCARD;
 
 #endif // NEX_EDITOR_H

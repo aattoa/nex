@@ -3,6 +3,7 @@
 
 #include "util.h"
 #include "strbuf.h"
+#include "filebuf.h"
 
 enum editline_status {
     editline_ok,
@@ -16,13 +17,14 @@ enum editline_mode {
 };
 
 struct editline_state {
+    size_t history_index; // 1-based
     size_t cursor;
     size_t count;
     size_t leftmost_column;
     enum editline_mode mode;
 };
 
-enum editline_status editline_handle_key(struct strbuf *line, struct editline_state *state, int key) NEX_NONNULL;
+enum editline_status editline_handle_key(struct strbuf *line, struct editline_state *state, struct filebuf *history, int key) NEX_GNU_ATTRIBUTE(nonnull(1, 2));
 
 struct editline_state editline_state_new(void) NEX_CONST;
 

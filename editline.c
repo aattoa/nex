@@ -63,7 +63,46 @@ static enum editline_status add_count(size_t *count, char digit) {
     return editline_ok;
 }
 
-enum editline_status editline_handle_key(struct strbuf *line, struct editline_state *state, int key) {
+static enum editline_status set_line(struct strbuf *line, struct view new_line, struct editline_state *state) {
+    strbuf_clear(line);
+    if (strbuf_push_view(line, new_line)) {
+        state->cursor = line->len;
+        return editline_ok;
+    }
+    else {
+        state->cursor = 0;
+        return editline_fail;
+    }
+}
+
+static enum editline_status set_history_line(struct strbuf *line, struct editline_state *state, struct filebuf *history) {
+    struct strbuf *history_line = vector_at(&history->lines, state->history_index - 1);
+    if (history_line == NULL) {
+        die("bad history index\n");
+    }
+    return set_line(line, strbuf_view(*history_line), state);
+}
+
+static enum editline_status history_previous(struct strbuf *line, struct editline_state *state, struct filebuf *history) {
+    if (history == NULL || state->history_index < 2) {
+        return editline_fail;
+    }
+    --state->history_index;
+    return set_history_line(line, state, history);
+}
+
+static enum editline_status history_next(struct strbuf *line, struct editline_state *state, struct filebuf *history) {
+    if (history == NULL || state->history_index == 0) {
+        return editline_fail;
+    }
+    if (state->history_index == history->lines.len) {
+        return editline_fail;
+    }
+    ++state->history_index;
+    return set_history_line(line, state, history);
+}
+
+enum editline_status editline_handle_key(struct strbuf *line, struct editline_state *state, struct filebuf *history, int key) {
     if (state->mode == editline_mode_insert) {
         if (is_print(key)) {
             return insert(line, state, key);
@@ -72,6 +111,8 @@ enum editline_status editline_handle_key(struct strbuf *line, struct editline_st
         case NEX_KEY_ESCAPE:    cursor_left(state); return enter_mode(state, editline_mode_normal);
         case NEX_KEY_LEFT:      return cursor_left(state);
         case NEX_KEY_RIGHT:     return cursor_right(line, state);
+        case NEX_KEY_UP:        return history_previous(line, state, history);
+        case NEX_KEY_DOWN:      return history_next(line, state, history);
         case NEX_KEY_BACKSPACE: return backspace(line, state);
         case NEX_KEY_ENTER:     return editline_accept;
         }
@@ -84,6 +125,8 @@ enum editline_status editline_handle_key(struct strbuf *line, struct editline_st
         case 'x': case NEX_KEY_BACKSPACE:       return erase(line, state);
         case 'h': case NEX_KEY_LEFT:            return cursor_left(state);
         case 'l': case NEX_KEY_RIGHT:           return cursor_right(line, state);
+        case 'k': case NEX_KEY_UP:              return history_previous(line, state, history);
+        case 'j': case NEX_KEY_DOWN:            return history_next(line, state, history);
         case 'i': case 'I': case 'a': case 'A': return start_insert(line, state, key);
         case '$':                               state->cursor = line->len; return editline_ok;
         case NEX_KEY_ESCAPE:                    state->count = 0; return editline_ok;
@@ -101,6 +144,7 @@ enum editline_status editline_handle_key(struct strbuf *line, struct editline_st
 
 struct editline_state editline_state_new(void) {
     return (struct editline_state) {
+        .history_index = 0,
         .cursor = 0,
         .count = 0,
         .leftmost_column = 0,

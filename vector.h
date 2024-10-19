@@ -17,6 +17,10 @@ void vector_clear(struct vector *vector) NEX_NONNULL;
 
 void vector_free(struct vector *vector) NEX_NONNULL;
 
+void *vector_front(struct vector *vector) NEX_NONNULL NEX_NODISCARD;
+
+void *vector_back(struct vector *vector) NEX_NONNULL NEX_NODISCARD;
+
 void *vector_at(struct vector *vector, size_t index) NEX_NONNULL NEX_NODISCARD;
 
 void *vector_at_unchecked(struct vector *vector, size_t index) NEX_NONNULL NEX_NODISCARD;

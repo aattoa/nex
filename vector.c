@@ -40,6 +40,14 @@ void vector_free(struct vector *vector) {
     vector->cap = 0;
 }
 
+void *vector_front(struct vector *vector) {
+    return vector_at(vector, 0);
+}
+
+void *vector_back(struct vector *vector) {
+    return vector_at(vector, vector->len - 1);
+}
+
 void *vector_at(struct vector *vector, size_t index) {
     return index < vector->len ? vector_at_unchecked(vector, index) : NULL;
 }

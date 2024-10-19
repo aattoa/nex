@@ -142,7 +142,10 @@ static void terminal_stop(void) {
 int main(int argc, const char **argv) {
     struct editor editor = editor_new(terminal_get_size());
     process_arguments(&editor, argv + 1, argv + argc);
-    editor_initialize_cmdline(&editor);
+
+    editor.cmdline_filebuf.path = editor_history_path();
+    filebuf_read(&editor.cmdline_filebuf);
+    editor_cmdline_new(&editor);
 
     // Enable full output buffering.
     setvbuf(stdout, NULL, _IOFBF, BUFSIZ);

@@ -131,7 +131,7 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
         state->cursor.x = 0;
         return start_insert(state);
     case 'a':
-        ++state->cursor.x;
+        state->cursor.x += (vi_current_line(filebuf, state)->len != 0);
         return start_insert(state);
     case 'A':
         state->cursor.x = vi_current_line(filebuf, state)->len;
@@ -140,6 +140,10 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
         cursor_down(filebuf, state, virtualedit_one); // fallthrough
     case 'O':
         insert_line(filebuf, state->cursor.y);
+        state->cursor.x = 0;
+        return start_insert(state);
+    case 'S':
+        strbuf_clear(vi_current_line(filebuf, state));
         state->cursor.x = 0;
         return start_insert(state);
     case 'v':
@@ -155,6 +159,8 @@ static enum vi_status handle_key_normal(struct filebuf *filebuf, struct vi_state
     case '"':
         state->mode = vi_mode_register_pending;
         return vi_ok;
+    case NEX_KEY_ENTER:
+        return state->context == vi_context_line ? vi_line_accept : vi_fail;
     case NEX_KEY_ESCAPE:
         state->count = 0;
         return vi_ok;
@@ -219,7 +225,13 @@ static enum vi_status erase_range(struct filebuf *filebuf, struct vi_state *stat
     state->cursor = range.begin;
     state->mode = vi_mode_normal;
     strbuf_clear(reg);
-    return lines_collect_range(&filebuf->lines, range, reg) && lines_erase_range(&filebuf->lines, range) ? vi_ok : vi_fail;
+    return lines_collect_range(&filebuf->lines, range, reg)
+        && lines_erase_range(&filebuf->lines, range) ? vi_ok : vi_fail;
+}
+
+static enum vi_status change_range(struct filebuf *filebuf, struct vi_state *state, struct registers *registers) {
+    enum vi_status status = erase_range(filebuf, state, registers);
+    return status == vi_ok ? start_insert(state) : status;
 }
 
 static enum vi_status swap_select_cursor(struct vi_state *state) {
@@ -231,13 +243,15 @@ static enum vi_status swap_select_cursor(struct vi_state *state) {
 
 static enum vi_status handle_key_select(struct filebuf *filebuf, struct vi_state *state, struct registers *registers, int key) {
     switch (key) {
-    case NEX_KEY_ESCAPE:
+    case 'v': case NEX_KEY_ESCAPE:
         state->mode = vi_mode_normal;
         return vi_ok;
     case 'y':
         return yank_range(filebuf, state, registers);
     case 'd': case 'x':
         return erase_range(filebuf, state, registers);
+    case 'c':
+        return change_range(filebuf, state, registers);
     case 'o':
         return swap_select_cursor(state);
     }
@@ -288,7 +302,7 @@ struct vi_state vi_state_new(enum vi_context context) {
         .select_start = (struct position) { .x = 0, .y = 0 },
         .cursor = (struct position) { .x = 0, .y = 0 },
         .frame = (struct vi_frame) { .top = 0, .left = 0 },
-        .mode = context == vi_context_file ? vi_mode_normal : vi_mode_insert,
+        .mode = vi_mode_normal,
         .context = context,
         .count = 0,
         .regname = 0,

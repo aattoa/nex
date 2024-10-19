@@ -4,7 +4,8 @@ A clone of ex, the elder text editor.
 
 ## Dependencies
 
-glibc and a C99 compiler.
+- A POSIX compatible C standard library (e.g. glibc, musl)
+- A C99 compiler
 
 ## Build
 

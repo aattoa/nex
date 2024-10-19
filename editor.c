@@ -112,10 +112,9 @@ bool editor_handle_key_cmdline(struct editor *editor, int key) {
     if (status == vi_line_accept) {
         struct view command = strbuf_view(*vi_current_line(&editor->cmdline_filebuf, &editor->cmdline_state));
         editor_cmdline_history_append(editor, command);
-        editor->cmdline_state.cursor = (struct position) { .x = 0, .y = editor->cmdline_filebuf.lines.len };
-        struct strbuf new_line = strbuf_new();
-        return vector_push(&editor->cmdline_filebuf.lines, &new_line)
-            && editor_execute_command(editor, command);
+        bool result = editor_execute_command(editor, command);
+        editor_cmdline_new(editor);
+        return result;
     }
     return status == vi_ok;
 }
@@ -164,14 +163,16 @@ void editor_cursor_scroll(size_t *first, size_t dimension, size_t cursor, size_t
 #undef first
 }
 
-void editor_initialize_cmdline(struct editor *editor) {
-    editor->cmdline_filebuf.path = editor_history_path();
-    filebuf_read(&editor->cmdline_filebuf);
-    editor->cmdline_state.cursor = (struct position) { .x = 0, .y = editor->cmdline_filebuf.lines.len };
-    struct strbuf new_line = strbuf_new();
-    if (!vector_push(&editor->cmdline_filebuf.lines, &new_line)) {
-        die("Could not allocate cmdline\n");
+void editor_cmdline_new(struct editor *editor) {
+    struct strbuf *previous = vector_back(&editor->cmdline_filebuf.lines);
+    if (previous == NULL || previous->len != 0) {
+        struct strbuf new_line = strbuf_new();
+        if (!vector_push(&editor->cmdline_filebuf.lines, &new_line)) {
+            die("Failed to allocate cmdline\n");
+        }
     }
+    editor->cmdline_state.cursor = (struct position) { .x = 0, .y = editor->cmdline_filebuf.lines.len - 1 };
+    editor->cmdline_state.mode = vi_mode_insert;
 }
 
 void editor_cmdline_history_append(struct editor *editor, struct view entry) {

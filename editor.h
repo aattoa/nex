@@ -58,7 +58,7 @@ bool editor_handle_key_editline(struct editor *editor, int key) NEX_NONNULL;
 
 bool editor_handle_key_vi(struct editor *editor, int key) NEX_NONNULL;
 
-void editor_initialize_cmdline(struct editor *editor) NEX_NONNULL;
+void editor_cmdline_new(struct editor *editor) NEX_NONNULL;
 
 void editor_cmdline_history_append(struct editor *editor, struct view entry) NEX_NONNULL;
 
